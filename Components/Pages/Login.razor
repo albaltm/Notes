@@ -1,0 +1,135 @@
+﻿@page "/login"
+@using AppNotes.Components.Components
+@using Firebase.Database
+@using MudBlazor.Services
+@using AppNotes.Components.Layout
+@using System.Security.Cryptography
+@using System.Text
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime
+@inject ConexionBBDD _connection
+@layout EmptyLayout
+@inherits Global
+
+<div class="col-11 col-sm-8 col-md-6 m-auto bg-light position-relative d-block py-5" style="height: 100vh">
+    <div class="position-absolute top-50 start-50 translate-middle w-100">
+        <img src="images/@(imagen).png" class="mx-auto d-block" style="width:45%; max-width:30vh;" />
+        <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-6 mx-auto d-flex">
+            <MudTextField Style="max-height: 10vh;" @bind-Value="correo" Placeholder="Correo electrónico" Variant="MudBlazor.Variant.Outlined"></MudTextField>
+        </div>
+        <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-2 mx-auto d-flex">
+            <MudTextField Style="max-height: 10vh;" @bind-Value="passwd" @onfocusin="() => CambioImagen(false)" Placeholder="Contraseña" Variant="MudBlazor.Variant.Outlined" Adornment="Adornment.End" InputType="@(mostrarPasswd ? InputType.Text : InputType.Password)" AdornmentIcon="@(mostrarPasswd ? Icons.Material.Rounded.VisibilityOff : Icons.Material.Rounded.Visibility)" OnAdornmentClick="@(() => CambioImagen(true))" @onkeypress="Enter"/>
+        </div>
+        <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-1 mx-auto d-flex">
+            <span class="col-12 text-muted text-end" style="font-size:90%; cursor:pointer" @onclick="OpenDialog">Recuperar contraseña</span>
+        </div>
+        <div class="row mt-6">
+            <button type="button" class="btn btn-sm btn-dark col-8 col-sm-3 m-auto py-sm-1 py-md-2 py-lg-3" @onclick="IniciarSesion">Entrar</button>
+        </div>
+        <div class="col-12 mx-auto mt-6 row d-lg-flex mt-2">
+            <a class="text-muted d-block col-lg-6 d-lg-inline-block text-center text-lg-end pe-lg-6 mb-1" style="font-size:90%; cursor:pointer; text-decoration:underline;" href="/register">¿Aún no te has registrado?</a>
+            <a class="text-muted d-block col-lg-6 d-lg-inline-block text-center text-lg-start ps-lg-6 mb-1" style="font-size:90%; cursor:pointer; text-decoration:underline;" @onclick="AccesoSinConexion">Acceder sin iniciar sesión.</a>
+        </div>
+    </div>
+</div>
+@code {
+    string imagen = "login_looking_down";
+
+    string correo { get; set; }
+    string passwd { get; set; }
+    bool mostrarPasswd = false;
+
+    private void CambioImagen(bool cambioMostrar)
+    {
+        if (cambioMostrar == true)
+        {
+            mostrarPasswd = !mostrarPasswd;
+        }
+        if (mostrarPasswd)
+        {
+            imagen = "login_looking_down";
+        }
+        else
+        {
+            imagen = "login_eyes_closed";
+        }
+    }
+
+    private async void IniciarSesion()
+    {
+        try
+        {
+            FirebaseClient client = new FirebaseClient(FirebasePath);
+            var user = (await client.Child("usuarios").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(correo.ToLower())).ToList().FirstOrDefault();
+            if (user == null || !GetSHA1(passwd).Equals(user.Password))
+            {
+                Snackbar.Add("El correo o la contraseña introducidos no son correctos", Severity.Error);
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "usuario", user.Id);
+                NavigationManager.NavigateTo("/");
+            }
+            client.Dispose();
+        }
+        catch
+        {
+            Snackbar.Add("No se ha podido iniciar sesión. Vuelve a intentarlo más tarde", Severity.Error);
+        }
+    }
+
+    public async void AccesoSinConexion()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "¿Seguro?",
+            "No podrás sincronizar tus datos en otros dispositivos, pero puedes crear una cuenta más adelante.",
+            yesText: "Confirmar", cancelText: "Cancelar");
+        if (result != null)
+        {
+            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "conexion", "false");
+            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "usuario", "false");
+            _connection.Vaciar();
+            NavigationManager.NavigateTo("/library");
+        }
+    }
+
+    private void OpenDialog()
+    {
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions() 
+        {
+            DisableBackdropClick = true,
+            CloseOnEscapeKey = false,
+            CloseButton = true,
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true
+        };
+        DialogService.Show<PasswordRecovery>("Recuperación de contraseña", options);
+    }
+
+    private static string GetSHA1(string str)
+    {
+        SHA1 sha1 = SHA1Managed.Create();
+        ASCIIEncoding encoding = new ASCIIEncoding();
+        byte[] stream = null;
+        StringBuilder sb = new StringBuilder();
+        stream = sha1.ComputeHash(encoding.GetBytes(str));
+        for (int i = 0; i < stream.Length; i++) sb.AppendFormat("{0:x2}", stream[i]);
+        return sb.ToString();
+    }
+
+    private void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            IniciarSesion();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+    }
+}

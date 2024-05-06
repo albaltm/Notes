@@ -1,0 +1,25 @@
+﻿@page "/"
+@using AppNotes.Components.Layout
+@using Firebase.Database
+@inherits Global
+@inject NavigationManager NavigationManager
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime
+@layout EmptyLayout
+
+@code {
+
+    protected async override void OnInitialized()
+    {
+        //await JSRuntime.InvokeAsync<string>("localStorage.setItem", "usuario", "");
+        var valor = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "usuario");
+        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "conexion", "true");
+        if (valor == null || valor.Length == 0)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/library");
+        }
+    }
+}

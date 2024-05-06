@@ -1,0 +1,5 @@
+﻿@media viewport and (max-width: 300px) {
+    .width-responsive {
+        width: 30%;
+    }
+}

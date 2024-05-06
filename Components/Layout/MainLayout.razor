@@ -1,0 +1,338 @@
+﻿@using AppNotes.Components.Pages
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inherits LayoutComponentBase
+
+<div class="page">
+    <main>
+        <MudDialogProvider />
+        <MudSnackbarProvider/>
+        <MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="@userTheme"/>
+
+        <MudLayout>
+            <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert>
+                <MudAppBar Elevation="1" Color="Color.Primary">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+                    <MudSpacer/>
+                    <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit">
+                        <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
+                        <MudMenuItem AutoClose="false">
+                            <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@darkModeSystem">
+                                <MudToggleItem Value="@("system")">Dispositivo</MudToggleItem>
+                                <MudToggleItem Value="@("light")">Claro</MudToggleItem>
+                                <MudToggleItem Value="@("dark")">Oscuro</MudToggleItem>
+                            </MudToggleGroup>
+                        </MudMenuItem>
+                        <MudMenuItem AutoClose="false">
+                            <MudToggleGroup T="MudTheme" Rounded Outline="false" Delimiters="false" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@userTheme" Color="Color.Transparent">
+                                <MudToggleItem Value="@redTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" Size="Size.Large" style="color: #EF5350;" @onclick="@(() => SetTheme("red"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@pinkTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" Size="Size.Large" style="color: #F06292;" @onclick="@(() => SetTheme("pink"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@purpleTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" Size="Size.Large" style="color: #9575CD;" @onclick="@(() => SetTheme("purple"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@blueTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" Size="Size.Large" style="color: #64B5F6;" @onclick="@(() => SetTheme("blue"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@greenTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" Size="Size.Large" style="color: #81C784;" @onclick="@(() => SetTheme("green"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@orangeTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" Size="Size.Large" style="color: #FF8A65;" @onclick="@(() => SetTheme("orange"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@brownTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" Size="Size.Large" style="color: #8D6E63;" @onclick="@(() => SetTheme("brown"))" />
+                                </MudToggleItem>
+                            </MudToggleGroup>
+                        </MudMenuItem>
+                        <MudMenuItem>
+                            <MudText style="font-size:1.1em; padding-left:1em;">Editar perfil</MudText>
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="CerrarSesion">
+                            <MudText style="font-size:1.1em; padding-left:1em;">Salir</MudText>
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudAppBar>
+                <MudDrawer @bind-Open="@open" Elevation="1" ClipMode="DrawerClipMode.Always">
+                    <MudNavMenu Rounded="true" Color="Color.Primary" >
+                        <MudNavLink Match="NavLinkMatch.All" Href="/library" Class="mt-4"><MudIcon Icon="@Icons.Material.Rounded.Book" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Biblioteca</MudText></MudNavLink>
+                        <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Tareas</MudText></MudNavLink>
+                        <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Autorenew" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Hábitos</MudText></MudNavLink>
+                        <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Calendario</MudText></MudNavLink>
+                    </MudNavMenu>
+                </MudDrawer>
+            </MudHidden>
+            <MudMainContent>
+                <article class="content px-4">
+                    @Body
+                </article>
+            </MudMainContent>
+            <MudHidden Breakpoint="Breakpoint.SmAndUp">
+                <MudAppBar Bottom="true" Fixed="true" Color="@Color.Primary" Elevation="1">
+                    <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Size="Size.Small" Class="mx-auto text-light" /></MudLink>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
+                    <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
+                    <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
+                    <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.BottomRight" class="text-light">
+                        <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
+                        <MudMenuItem AutoClose="false" Style="max-width:90vw">
+                            <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@darkModeSystem">
+                                <MudToggleItem Value="@("system")" style="font-size: 0.9em;">Sistema</MudToggleItem>
+                                <MudToggleItem Value="@("light")" style="font-size: 0.9em;">Claro</MudToggleItem>
+                                <MudToggleItem Value="@("dark")" style="font-size: 0.9em;">Oscuro</MudToggleItem>
+                            </MudToggleGroup>
+                        </MudMenuItem>
+                        <MudMenuItem AutoClose="false" Style="max-width:90vw">
+                            <MudToggleGroup T="MudTheme" Rounded Outline="false" Delimiters="false" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@userTheme" Color="Color.Transparent">
+                                <MudToggleItem Value="@redTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #EF5350;" @onclick="@(() => SetTheme("red"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@pinkTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #F06292;" @onclick="@(() => SetTheme("pink"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@purpleTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #9575CD;" @onclick="@(() => SetTheme("purple"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@blueTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #64B5F6;" @onclick="@(() => SetTheme("blue"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@greenTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #81C784;" @onclick="@(() => SetTheme("green"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@orangeTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #FF8A65;" @onclick="@(() => SetTheme("orange"))" />
+                                </MudToggleItem>
+                                <MudToggleItem Value="@brownTheme">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #8D6E63;" @onclick="@(() => SetTheme("brown"))" />
+                                </MudToggleItem>
+                            </MudToggleGroup>
+                        </MudMenuItem>
+                        <MudMenuItem>
+                            <MudText>Editar perfil</MudText>
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="CerrarSesion">
+                            <MudText>Salir</MudText>
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudAppBar>
+            </MudHidden>
+        </MudLayout>
+    </main>
+</div>
+@code{
+    public bool _isDarkMode;
+    private string DarkModeSystem;
+    private string darkModeSystem
+    {
+        get
+        {
+            return DarkModeSystem;
+        }
+        set
+        {
+            if (value != null)
+            {
+                if (value.Equals("system"))
+                {
+                    DarkModeSystem = "system";
+                    CambioSystem();
+                }
+                else if (value.Equals("light"))
+                {
+                    DarkModeSystem = "light";
+                    _isDarkMode = false;
+                }
+                else if (value.Equals("dark"))
+                {
+                    DarkModeSystem = "dark";
+                    _isDarkMode = true;
+                }
+                SetDarkModePreference(value);
+                StateHasChanged();
+            }
+        }
+    }
+    private MudThemeProvider _mudThemeProvider;
+    MudTheme userTheme { get; set; }
+    bool open = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var darkmode = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode");
+            if (darkmode == null)
+            {
+                await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode", "system");
+                darkModeSystem = "system";
+            }
+            else
+            {
+                darkModeSystem = darkmode;
+            }
+            GetUserTheme();
+            if (DarkModeSystem.Equals("system"))
+            {
+                _isDarkMode = await _mudThemeProvider.GetSystemPreference();
+            }
+            await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+            StateHasChanged();
+        }
+    }
+
+    public async void CerrarSesion()
+    {
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "usuario", "");
+        NavigationManager.NavigateTo("/");
+    }
+
+    public async void GetUserTheme()
+    {
+        var theme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
+        if (theme == null)
+        {
+            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "theme", "pink");
+            userTheme = pinkTheme;
+        }
+        else if (theme.Equals("red"))
+        {
+            userTheme = redTheme;
+        }
+        else if (theme.Equals("pink"))
+        {
+            userTheme = pinkTheme;
+        }
+        else if (theme.Equals("purple"))
+        {
+            userTheme = purpleTheme;
+        }
+        else if (theme.Equals("blue"))
+        {
+            userTheme = blueTheme;
+        }
+        else if (theme.Equals("green"))
+        {
+            userTheme = greenTheme;
+        }
+        else if (theme.Equals("orange"))
+        {
+            userTheme = orangeTheme;
+        }
+        else if (theme.Equals("brown"))
+        {
+            userTheme = brownTheme;
+        }
+        StateHasChanged();
+    }
+
+    public async void CambioSystem()
+    {
+        _isDarkMode = await _mudThemeProvider.GetSystemPreference();
+        StateHasChanged();
+    }
+
+    private Task OnSystemPreferenceChanged(bool newValue)
+    {
+        if (DarkModeSystem.Equals("system")){
+            _isDarkMode = newValue;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    public async void SetDarkModePreference(string preference)
+    {
+        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "darkmode", preference);
+    }
+
+    public async void SetTheme(string color)
+    {
+        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "theme", color);
+    }
+
+    MudTheme redTheme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = MudBlazor.Colors.Red.Lighten1
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = MudBlazor.Colors.Red.Darken4
+            }
+        };
+    MudTheme pinkTheme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = MudBlazor.Colors.Pink.Lighten3
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = MudBlazor.Colors.Pink.Darken3
+            }
+        };
+    MudTheme purpleTheme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = MudBlazor.Colors.DeepPurple.Lighten2
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = MudBlazor.Colors.DeepPurple.Darken1
+            }
+        };
+    MudTheme blueTheme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = MudBlazor.Colors.Blue.Lighten3
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = MudBlazor.Colors.Blue.Darken2
+            }
+        };
+    MudTheme greenTheme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = MudBlazor.Colors.Green.Lighten2
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = MudBlazor.Colors.Teal.Default
+            }
+        };
+    MudTheme orangeTheme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = MudBlazor.Colors.DeepOrange.Lighten2
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = MudBlazor.Colors.DeepOrange.Darken3
+            }
+        };
+    MudTheme brownTheme = new MudTheme()
+        {
+            Palette = new PaletteLight()
+            {
+                Primary = MudBlazor.Colors.Brown.Lighten1
+            },
+            PaletteDark = new PaletteDark()
+            {
+                Primary = MudBlazor.Colors.Brown.Lighten1
+            }
+        };
+
+    void ToggleDrawer()
+    {
+        open = !open;
+    }
+}

@@ -1,0 +1,171 @@
+﻿@page "/register"
+@using AppNotes.Components.Components
+@using AppNotes.Components.Layout
+@using System.ComponentModel.DataAnnotations
+@using System.Text.RegularExpressions
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
+@using System.Security.Cryptography
+@using System.Text
+@using System.Globalization
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@layout EmptyLayout
+@inherits Global
+
+<div class="col-11 col-sm-8 col-md-6 m-auto bg-light position-relative d-block py-5" style="height: 100vh">
+    <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" Href="/login" class="ms-1 mt-1 link-dark position-absolute top-0 start-0"/>
+    <div class="position-absolute top-50 start-50 translate-middle w-100">
+        <MudForm @ref="form" class="py-2" @onkeydown="Enter">
+            <div class="col-9 col-sm-8 col-lg-7 col-xl-6 my-2 mx-auto d-flex">
+                <h4 class="mx-auto text-muted">Registro de usuario</h4>
+            </div>
+            <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-6 mx-auto d-flex">
+                <MudTextField Style="max-height: 10vh;" @bind-Value="username" Placeholder="Nombre"
+                Variant="MudBlazor.Variant.Outlined" Required="true" RequiredError="Campo obligatorio" />
+            </div>
+            <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-2 mx-auto d-flex">
+                <MudTextField Style="max-height: 10vh;" @bind-Value="correo" Placeholder="Correo electrónico" 
+                Variant="MudBlazor.Variant.Outlined" Required="true" RequiredError="Campo obligatorio"
+                Validation="@(new EmailAddressAttribute() {ErrorMessage = "El correo no es válido"})"/>
+            </div>
+            <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-2 mx-auto d-flex">
+                <MudTextField Style="max-height: 10vh;" @bind-Value="passwd" Placeholder="Contraseña" 
+                Variant="MudBlazor.Variant.Outlined" Adornment="Adornment.End" InputType="@(mostrarPasswd ? InputType.Text : InputType.Password)" 
+                AdornmentIcon="@(mostrarPasswd ? Icons.Material.Rounded.VisibilityOff : Icons.Material.Rounded.Visibility)" 
+                OnAdornmentClick="@(() => mostrarPasswd = !mostrarPasswd)" Validation="@(new Func<string, string>(PasswordStrength))"/>
+            </div>
+            <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-2 mx-auto d-flex">
+                <MudTextField T="string" Style="max-height: 10vh;" Placeholder="Repite la contraseña" Variant="MudBlazor.Variant.Outlined" 
+                Adornment="Adornment.End" InputType="@(mostrarRepeatPasswd ? InputType.Text : InputType.Password)" 
+                AdornmentIcon="@(mostrarRepeatPasswd ? Icons.Material.Rounded.VisibilityOff : Icons.Material.Rounded.Visibility)" 
+                OnAdornmentClick="@(() => mostrarRepeatPasswd = !mostrarRepeatPasswd)" Validation="@(new Func<string, string>(PasswordMatch))"/>
+            </div>
+            <div class="row mt-5 pt-5 mb-2">
+                <button type="button" class="btn btn-sm btn-dark col-6 col-sm-3 mx-auto py-2" @onclick="Registro">Registrarme</button>
+            </div>
+        </MudForm>
+    </div>
+</div>
+
+@code {
+    MudForm form;
+    string username { get; set; }
+    string correo { get; set; }
+    string passwd { get; set; }
+    bool mostrarPasswd { get; set; } = false;
+    bool mostrarRepeatPasswd { get; set; } = false;
+    public RegistryValidationQueue Registryqueue;
+    public Usuario User;
+
+    private async void Registro()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                var usuarioExistente = (await client.Child("usuarios").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(correo.ToLower())).ToList().FirstOrDefault();
+                if (usuarioExistente != null)
+                {
+                    Snackbar.Add("Este correo ya ha sido registrado", Severity.Error);
+                    client.Dispose();
+                }
+                else
+                {
+                    //crear codigo y guardarlo, si habia uno anterior se sobrescribe
+                    var code = new Random().Next(10000, 100000);
+                    Registryqueue = (await client.Child("registryvalidationqueue").OnceAsync<RegistryValidationQueue>()).Select(x => x.Object).Where(x => x.EmailUser.ToLower().Equals(correo.ToLower())).ToList().FirstOrDefault();
+                    if (Registryqueue == null)
+                    {
+                        Registryqueue = new RegistryValidationQueue { EmailUser = correo.ToLower(), Code = code };
+                        var queuefirebase = await client.Child("registryvalidationqueue").PostAsync(Registryqueue);
+                        Registryqueue.Id = queuefirebase.Key;
+                        await client.Child("registryvalidationqueue").Child(queuefirebase.Key).PutAsync(Registryqueue);
+                    }
+                    else
+                    {
+                        Registryqueue.Code = code;
+                        await client.Child("registryvalidationqueue").Child(Registryqueue.Id).PutAsync(Registryqueue);
+                    }
+
+                    //enviar correo
+                    User = new Usuario { 
+                        Username = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(username.ToLower()).Trim(), 
+                        Email = correo.ToLower(), 
+                        Password = GetSHA1(passwd) 
+                    };
+                    new Mail("Confirmación de registro", $"<h3>Hola, {User.Username}</h3><br/>Hemos recibido una solicitud de registro. Introduce este código en la aplicación para finalizarlo: <b>{code}</b>.<br/><br/>Si no has sido tu, por favor ignora este mensaje.", User.Email, User.Username).sendMail();
+                    
+                    //pedir el codigo
+                    MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+                        {
+                            DisableBackdropClick = true,
+                            CloseOnEscapeKey = false,
+                            CloseButton = true,
+                            MaxWidth = MaxWidth.ExtraSmall,
+                            FullWidth = true
+                        };
+                    var parameters = new DialogParameters<RegistryValidation>();
+                    parameters.Add(x => x.Registryqueue, Registryqueue);
+                    parameters.Add( x => x.User , User);
+                    DialogService.Show<RegistryValidation>("Validación de registro", parameters, options);
+                }
+            }
+            catch
+            {
+                Snackbar.Add("No se ha podido registrar el usuario", Severity.Error);
+            }
+        }
+    }
+
+    private string PasswordStrength(string pw)
+    {
+        if (string.IsNullOrWhiteSpace(pw))
+        {
+            return "Campo obligatorio";
+        }
+        if (pw.Length < 6)
+            return "Introduce al menos 6 caracteres";
+        if (!Regex.IsMatch(pw, @"[A-Z]"))
+            return "Introduce al menos una letra mayúscula";
+        if (!Regex.IsMatch(pw, @"[0-9]"))
+            return "Introduce al menos un número";
+        return null;
+    }
+
+    private string PasswordMatch(string arg)
+    {
+        if (passwd == null || passwd.Equals(arg))
+            return null;
+        return "La contraseña no coincide";
+    }
+
+    private static string GetSHA1(string str)
+    {
+        SHA1 sha1 = SHA1Managed.Create();
+        ASCIIEncoding encoding = new ASCIIEncoding();
+        byte[] stream = null;
+        StringBuilder sb = new StringBuilder();
+        stream = sha1.ComputeHash(encoding.GetBytes(str));
+        for (int i = 0; i < stream.Length; i++) sb.AppendFormat("{0:x2}", stream[i]);
+        return sb.ToString();
+    }
+
+    private void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            Registro();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+    }
+}
