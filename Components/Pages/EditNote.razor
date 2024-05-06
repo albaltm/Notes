@@ -1,0 +1,59 @@
+﻿@page "/editnote"
+@page "/editnote/{id:long?}"
+@using AppNotes.Components.Layout
+@layout MainLayout
+
+<RadzenHtmlEditor @bind-Value=@htmlValue ShowToolbar="true" style="border:none; min-height:80vh;">
+    <RadzenHtmlEditorUndo />
+    @* <RadzenHtmlEditorRedo /> *@
+    <RadzenHtmlEditorSeparator />
+    <RadzenHtmlEditorBold />
+    <RadzenHtmlEditorItalic />
+    <RadzenHtmlEditorUnderline />
+    <RadzenHtmlEditorStrikeThrough />
+    <RadzenHtmlEditorSeparator />
+    <RadzenHtmlEditorAlignLeft />
+    <RadzenHtmlEditorAlignCenter />
+    <RadzenHtmlEditorAlignRight />
+    <RadzenHtmlEditorJustify />
+    <RadzenHtmlEditorSeparator />
+    <RadzenHtmlEditorOrderedList />
+    <RadzenHtmlEditorColor />
+    <RadzenHtmlEditorBackground />
+    @* <RadzenHtmlEditorRemoveFormat /> *@
+    @* <RadzenHtmlEditorSubscript /> *@
+    @* <RadzenHtmlEditorSuperscript /> *@
+    @* <RadzenHtmlEditorImage /> *@
+    <RadzenHtmlEditorFontName />
+    <RadzenHtmlEditorFontSize />
+    @* <RadzenHtmlEditorFormatBlock /> *@
+    @* <RadzenHtmlEditorCustomTool /> *@
+    <MudToggleGroup T="string" Style="width: 5em; height:2em;">
+        <MudToggleItem Value="@("View")"><MudIcon Icon="@Icons.Rounded.Visibility" Size="Size.Small"></MudIcon></MudToggleItem>
+        <MudToggleItem Value="@("Edit")"><MudIcon Icon="@Icons.Rounded.Edit" Size="Size.Small"></MudIcon></MudToggleItem>
+    </MudToggleGroup>
+</RadzenHtmlEditor>
+
+@code {
+    string htmlValue;
+
+
+    [Parameter]
+    public long? Id { get; set; }
+
+    private Note Note { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (Id == null)
+        {
+            //crear nota nueva
+        }
+        else
+        {
+            //editar nota existente
+        }
+    }
+}

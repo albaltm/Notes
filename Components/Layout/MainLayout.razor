@@ -6,14 +6,27 @@
 <div class="page">
     <main>
         <MudDialogProvider />
-        <MudSnackbarProvider/>
-        <MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="@userTheme"/>
+        <MudSnackbarProvider />
+        <MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="@userTheme" />
 
         <MudLayout>
-            <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert>
+            <div>
                 <MudAppBar Elevation="1" Color="Color.Primary">
+                    @* pantalla grande
+                    <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert> *@
                     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-                    <MudSpacer/>
+                    <MudSpacer />
+                    @* </MudHidden> *@
+
+                    @* movil
+                    <MudHidden Breakpoint="Breakpoint.SmAndUp">
+                    <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Class="mx-auto text-light" /></MudLink>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Color="Color.Inherit" Class="mx-auto text-light" />
+                    <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Inherit" Class="mx-auto text-light" />
+                    <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Inherit" Class="mx-auto text-light" />
+                    </MudHidden>*@
+
+                    @* comun *@
                     <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit">
                         <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
                         <MudMenuItem AutoClose="false">
@@ -57,72 +70,72 @@
                     </MudMenu>
                 </MudAppBar>
                 <MudDrawer @bind-Open="@open" Elevation="1" ClipMode="DrawerClipMode.Always">
-                    <MudNavMenu Rounded="true" Color="Color.Primary" >
+                    <MudNavMenu Rounded="true" Color="Color.Primary">
                         <MudNavLink Match="NavLinkMatch.All" Href="/library" Class="mt-4"><MudIcon Icon="@Icons.Material.Rounded.Book" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Biblioteca</MudText></MudNavLink>
                         <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Tareas</MudText></MudNavLink>
                         <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Autorenew" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Hábitos</MudText></MudNavLink>
                         <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Calendario</MudText></MudNavLink>
                     </MudNavMenu>
                 </MudDrawer>
-            </MudHidden>
+            </div>
             <MudMainContent>
                 <article class="content px-4">
                     @Body
                 </article>
             </MudMainContent>
-            <MudHidden Breakpoint="Breakpoint.SmAndUp">
-                <MudAppBar Bottom="true" Fixed="true" Color="@Color.Primary" Elevation="1">
-                    <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Size="Size.Small" Class="mx-auto text-light" /></MudLink>
-                    <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
-                    <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
-                    <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
-                    <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.BottomRight" class="text-light">
-                        <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
-                        <MudMenuItem AutoClose="false" Style="max-width:90vw">
-                            <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@darkModeSystem">
-                                <MudToggleItem Value="@("system")" style="font-size: 0.9em;">Sistema</MudToggleItem>
-                                <MudToggleItem Value="@("light")" style="font-size: 0.9em;">Claro</MudToggleItem>
-                                <MudToggleItem Value="@("dark")" style="font-size: 0.9em;">Oscuro</MudToggleItem>
-                            </MudToggleGroup>
-                        </MudMenuItem>
-                        <MudMenuItem AutoClose="false" Style="max-width:90vw">
-                            <MudToggleGroup T="MudTheme" Rounded Outline="false" Delimiters="false" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@userTheme" Color="Color.Transparent">
-                                <MudToggleItem Value="@redTheme">
-                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #EF5350;" @onclick="@(() => SetTheme("red"))" />
-                                </MudToggleItem>
-                                <MudToggleItem Value="@pinkTheme">
-                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #F06292;" @onclick="@(() => SetTheme("pink"))" />
-                                </MudToggleItem>
-                                <MudToggleItem Value="@purpleTheme">
-                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #9575CD;" @onclick="@(() => SetTheme("purple"))" />
-                                </MudToggleItem>
-                                <MudToggleItem Value="@blueTheme">
-                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #64B5F6;" @onclick="@(() => SetTheme("blue"))" />
-                                </MudToggleItem>
-                                <MudToggleItem Value="@greenTheme">
-                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #81C784;" @onclick="@(() => SetTheme("green"))" />
-                                </MudToggleItem>
-                                <MudToggleItem Value="@orangeTheme">
-                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #FF8A65;" @onclick="@(() => SetTheme("orange"))" />
-                                </MudToggleItem>
-                                <MudToggleItem Value="@brownTheme">
-                                    <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #8D6E63;" @onclick="@(() => SetTheme("brown"))" />
-                                </MudToggleItem>
-                            </MudToggleGroup>
-                        </MudMenuItem>
-                        <MudMenuItem>
-                            <MudText>Editar perfil</MudText>
-                        </MudMenuItem>
-                        <MudMenuItem OnClick="CerrarSesion">
-                            <MudText>Salir</MudText>
-                        </MudMenuItem>
-                    </MudMenu>
-                </MudAppBar>
-            </MudHidden>
+            @* <div>
+            <MudAppBar Bottom="true" Fixed="true" Color="@Color.Primary" Elevation="1">
+            <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Size="Size.Small" Class="mx-auto text-light" /></MudLink>
+            <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
+            <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
+            <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Inherit" Class="mx-auto text-light" />
+            <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.BottomRight" class="text-light">
+            <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
+            <MudMenuItem AutoClose="false" Style="max-width:90vw">
+            <MudToggleGroup T="string" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@darkModeSystem">
+            <MudToggleItem Value="@("system")" style="font-size: 0.9em;">Sistema</MudToggleItem>
+            <MudToggleItem Value="@("light")" style="font-size: 0.9em;">Claro</MudToggleItem>
+            <MudToggleItem Value="@("dark")" style="font-size: 0.9em;">Oscuro</MudToggleItem>
+            </MudToggleGroup>
+            </MudMenuItem>
+            <MudMenuItem AutoClose="false" Style="max-width:90vw">
+            <MudToggleGroup T="MudTheme" Rounded Outline="false" Delimiters="false" SelectionMode="SelectionMode.SingleSelection" @bind-Value="@userTheme" Color="Color.Transparent">
+            <MudToggleItem Value="@redTheme">
+            <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #EF5350;" @onclick="@(() => SetTheme("red"))" />
+            </MudToggleItem>
+            <MudToggleItem Value="@pinkTheme">
+            <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #F06292;" @onclick="@(() => SetTheme("pink"))" />
+            </MudToggleItem>
+            <MudToggleItem Value="@purpleTheme">
+            <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #9575CD;" @onclick="@(() => SetTheme("purple"))" />
+            </MudToggleItem>
+            <MudToggleItem Value="@blueTheme">
+            <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #64B5F6;" @onclick="@(() => SetTheme("blue"))" />
+            </MudToggleItem>
+            <MudToggleItem Value="@greenTheme">
+            <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #81C784;" @onclick="@(() => SetTheme("green"))" />
+            </MudToggleItem>
+            <MudToggleItem Value="@orangeTheme">
+            <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #FF8A65;" @onclick="@(() => SetTheme("orange"))" />
+            </MudToggleItem>
+            <MudToggleItem Value="@brownTheme">
+            <MudIcon Icon="@Icons.Material.Rounded.Circle" style="color: #8D6E63;" @onclick="@(() => SetTheme("brown"))" />
+            </MudToggleItem>
+            </MudToggleGroup>
+            </MudMenuItem>
+            <MudMenuItem>
+            <MudText>Editar perfil</MudText>
+            </MudMenuItem>
+            <MudMenuItem OnTouch="CerrarSesion" OnClick="CerrarSesion">
+            <MudText>Salir</MudText>
+            </MudMenuItem>
+            </MudMenu>
+            </MudAppBar>
+            </div> *@
         </MudLayout>
     </main>
 </div>
-@code{
+@code {
     public bool _isDarkMode;
     private string DarkModeSystem;
     private string darkModeSystem
@@ -236,7 +249,8 @@
 
     private Task OnSystemPreferenceChanged(bool newValue)
     {
-        if (DarkModeSystem.Equals("system")){
+        if (DarkModeSystem.Equals("system"))
+        {
             _isDarkMode = newValue;
             StateHasChanged();
         }

@@ -3,14 +3,15 @@
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 
-<MudMenu class="position-fixed end-0 bottom-0 me-4" style="margin-bottom:5em;" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+<MudMenu class="position-fixed end-0 bottom-0 me-4 mb-4" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
     <ActivatorContent>
         <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
     </ActivatorContent>
     <ChildContent>
-        <MudMenuItem Href="/createnote">Nota</MudMenuItem>
+        <MudMenuItem Href="/editnote">Nota</MudMenuItem>
     </ChildContent>
 </MudMenu>
+
 
 @code {
     private async Task NewNote()
