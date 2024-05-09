@@ -3,14 +3,26 @@
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 
-<MudMenu class="position-fixed end-0 bottom-0 me-4 mb-4" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
-    <ActivatorContent>
-        <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
-    </ActivatorContent>
-    <ChildContent>
-        <MudMenuItem Href="/editnote">Nota</MudMenuItem>
-    </ChildContent>
-</MudMenu>
+<MudHidden Breakpoint="Breakpoint.SmAndUp" Invert>
+    <MudMenu class="position-fixed end-0 bottom-0 me-4 mb-4" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+        <ActivatorContent>
+            <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
+        </ActivatorContent>
+        <ChildContent>
+            <MudMenuItem Href="/editnote">Nota</MudMenuItem>
+        </ChildContent>
+    </MudMenu>
+</MudHidden>
+<MudHidden Breakpoint="Breakpoint.SmAndUp">
+    <MudMenu class="position-fixed end-0 bottom-0 me-4" Style="margin-bottom: 4em;" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+        <ActivatorContent>
+            <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
+        </ActivatorContent>
+        <ChildContent>
+            <MudMenuItem Href="/editnote">Nota</MudMenuItem>
+        </ChildContent>
+    </MudMenu>
+</MudHidden>
 
 
 @code {

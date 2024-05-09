@@ -2,51 +2,129 @@
 @page "/editnote/{id:long?}"
 @using AppNotes.Components.Layout
 @layout MainLayout
+<style>
+    .mud-picker-container{
+        max-width: 60vw;
+        overflow: auto;
+    }
 
-<RadzenHtmlEditor @bind-Value=@htmlValue ShowToolbar="true" style="border:none; min-height:80vh;">
-    <RadzenHtmlEditorUndo />
-    @* <RadzenHtmlEditorRedo /> *@
-    <RadzenHtmlEditorSeparator />
-    <RadzenHtmlEditorBold />
-    <RadzenHtmlEditorItalic />
-    <RadzenHtmlEditorUnderline />
-    <RadzenHtmlEditorStrikeThrough />
-    <RadzenHtmlEditorSeparator />
-    <RadzenHtmlEditorAlignLeft />
-    <RadzenHtmlEditorAlignCenter />
-    <RadzenHtmlEditorAlignRight />
-    <RadzenHtmlEditorJustify />
-    <RadzenHtmlEditorSeparator />
-    <RadzenHtmlEditorOrderedList />
-    <RadzenHtmlEditorColor />
-    <RadzenHtmlEditorBackground />
-    @* <RadzenHtmlEditorRemoveFormat /> *@
-    @* <RadzenHtmlEditorSubscript /> *@
-    @* <RadzenHtmlEditorSuperscript /> *@
-    @* <RadzenHtmlEditorImage /> *@
-    <RadzenHtmlEditorFontName />
-    <RadzenHtmlEditorFontSize />
-    @* <RadzenHtmlEditorFormatBlock /> *@
-    @* <RadzenHtmlEditorCustomTool /> *@
-    <MudToggleGroup T="string" Style="width: 5em; height:2em;">
-        <MudToggleItem Value="@("View")"><MudIcon Icon="@Icons.Rounded.Visibility" Size="Size.Small"></MudIcon></MudToggleItem>
-        <MudToggleItem Value="@("Edit")"><MudIcon Icon="@Icons.Rounded.Edit" Size="Size.Small"></MudIcon></MudToggleItem>
-    </MudToggleGroup>
-</RadzenHtmlEditor>
+    .mud-switch{
+        margin:0;
+    }
+
+    .rz-html-editor {
+        border: none;
+    }
+
+    .rz-html-editor:focus-within {
+        outline-color: #a8a8a8;
+    }
+
+    .rz-html-editor-toolbar {
+        background-color: inherit;
+        color: inherit;
+    }
+
+    .rz-html-editor-button {
+        background-color: inherit;
+        color: inherit;
+    }
+
+    .rz-html-editor-content {
+        background-color: inherit;
+        color: inherit;
+    }
+
+    .rz-html-editor-dropdown-items {
+        background-color: inherit;
+        color: inherit;
+    }
+
+    .rz-html-editor-dropdown-item {
+        background-color: inherit;
+        color: inherit;
+        font-size: 15px !important;
+        font-size: medium !important;
+    }
+
+    .rz-html-editor-content {
+        background-color: @colorFondo.ToString();
+        color: @colorLetra.ToString();
+    }
+</style>
+
+<div class="row px-2">
+    @*TODO: etiquetas *@
+    <div class="col-12 col-md-5 d-flex mb-2 p-0 order-1 pt-2">
+        <MudIconButton Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-right:0.2em;" />
+        <MudTextField @bind-Value="Titulo" Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" Disabled="!Edicion" />
+        <MudIconButton Icon="@Icons.Material.Rounded.ArrowForwardIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-left:0.2em;" />
+    </div>
+    <div class="col-3 col-md-2 d-flex p-0 d-flex order-3 order-md-2 pt-2">
+        <MudSwitch @bind-Value="@Edicion" Class="mx-auto" ThumbIcon="@(Edicion==true ? Icons.Rounded.Edit : Icons.Rounded.Visibility)"
+                       ThumbIconColor="Color.Primary" Size="Size.Large" />
+    </div>
+    <div class="col-5 col-md-3 d-flex justify-content-around order-2 order-md-3">
+            <div class="p-0 d-flex position-relative">
+            <input @bind-value="colorFondo" type="color" disabled class="form-control form-control-color position-absolute bottom-0 mb-1" style="width:2.5em; border:none; background-color:inherit;" />
+                <MudColorPicker @bind-Text="colorFondo" AdornmentIcon="" Label="Fondo" style="width:2.5em; color:transparent" ColorPickerView="ColorPickerView.GridCompact" />
+            </div>
+            <div class="p-0 d-flex position-relative">
+                <input @bind-value="colorLetra" type="color" disabled class="form-control form-control-color position-absolute bottom-0 mb-1" style="width:2.5em; border:none; background-color:inherit;" />
+                <MudColorPicker @bind-Text="colorLetra" AdornmentIcon="" Label="Letra" style="width:2.5em; color:transparent" ColorPickerView="ColorPickerView.GridCompact" />
+            </div>
+    </div>
+    <div class="col-2 col-md-1 p-0 d-flex order-4 pt-2">
+        <MudToggleIconButton @bind-Toggled="@Destacado" Icon="@Icons.Material.Rounded.StarOutline" Color="@Color.Primary" Title="Destacar" Size="Size.Medium"
+                             Class="mx-auto" ToggledIcon="@Icons.Material.Rounded.Star" ToggledColor="@Color.Primary" ToggledTitle="Destacada" ToggledSize="Size.Medium" />
+    </div>
+    <div class="col-2 col-md-1 p-0 d-flex order-5 pt-2">
+        <MudToggleIconButton @bind-Toggled="@Marcado" Icon="@Icons.Material.Rounded.BookmarkBorder" Size="Size.Medium" Color="@Color.Primary" Title="Destacar"
+                             Class="mx-auto" ToggledIcon="@Icons.Material.Rounded.Bookmark" ToggledSize="Size.Medium" ToggledColor="@Color.Primary" ToggledTitle="Destacada" />
+    </div>
+</div>
+
+
+<RadzenHtmlEditor @bind-Value=@htmlValue ShowToolbar="Edicion" Disabled="!Edicion" style="min-height:60vh; margin-top:2em;">
+        <RadzenHtmlEditorUndo Title="Deshacer" Shortcut="Ctrl+Z" />
+        @* <RadzenHtmlEditorRedo Title="Rehacer" Shortcut="Ctrl+Y" /> *@
+        <RadzenHtmlEditorSeparator />
+        <RadzenHtmlEditorBold Title="Negrita" Shortcut="Ctrl+B" />
+        <RadzenHtmlEditorItalic Title="Cursiva" Shortcut="Ctrl+I" />
+        <RadzenHtmlEditorUnderline Title="Subrayado" Shortcut="Ctrl+U" />
+        <RadzenHtmlEditorStrikeThrough Title="Tachado" />
+        <RadzenHtmlEditorSeparator />
+        <RadzenHtmlEditorAlignLeft Title="Alinear izquierda" />
+        <RadzenHtmlEditorAlignCenter Title="Centrado" />
+        <RadzenHtmlEditorAlignRight Title="Alinear derecha" />
+        <RadzenHtmlEditorJustify Title="Justificado" />
+        <RadzenHtmlEditorSeparator />
+        <RadzenHtmlEditorIndent Title="Aumentar sangría" />
+        <RadzenHtmlEditorOutdent Title="Disminuir sangría" />
+        <RadzenHtmlEditorOrderedList Title="Lista" />
+        <RadzenHtmlEditorSeparator />
+        @* <RadzenHtmlEditorFormatBlock Title="Formato" Placeholder="Formato" Heading1Text="Titulo" Heading2Text="Subtítulo" Heading3Text="Encabezado1" Heading4Text="Encabezado3" Heading5Text="Encabezado4" Heading6Text="Encabezado5" /> *@
+        <RadzenHtmlEditorFontName Title="Fuente" Placeholder="Fuente" />
+        <RadzenHtmlEditorFontSize  Title="Tamaño" Placeholder="Tamaño" />
+    </RadzenHtmlEditor>
 
 @code {
     string htmlValue;
-
 
     [Parameter]
     public long? Id { get; set; }
 
     private Note Note { get; set; }
+    private string Titulo { get; set; }
+    private bool Edicion = true;
+    private bool Destacado = false;
+    private bool Marcado = false;
+    private string colorFondo = "inherit";
+    private string colorLetra = "inherit";
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
         if (Id == null)
         {
             //crear nota nueva
@@ -56,4 +134,24 @@
             //editar nota existente
         }
     }
+
+    // async Task OnExecute(HtmlEditorExecuteEventArgs args)
+    // {
+    //     if (args.CommandName == "InsertToday")
+    //     {
+    //         await InsertDate(args.Editor, DateTime.Now);
+    //     }
+    // }
+
+    // async Task InsertDate(RadzenHtmlEditor editor, DateTime date)
+    // {
+    //     await editor.ExecuteCommandAsync(HtmlEditorCommands.InsertHtml, $"<strong>{date.ToLongDateString()}</strong>");
+    // }
+    // async Task OnDateChange(DateTime? date, RadzenHtmlEditor editor)
+    // {
+    //     if (date != null)
+    //     {
+    //         await InsertDate(editor, date.Value);
+    //     }
+    // }
 }
