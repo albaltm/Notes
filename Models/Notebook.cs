@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 
 namespace AppNotes.Models
 {
-    [Table("note")]
-    public class Note : IBiblioteca
+    [Table("notebook")]
+    public class Notebook : IBiblioteca
     {
         [PrimaryKey]
         [Column("id")]
@@ -18,11 +18,13 @@ namespace AppNotes.Models
         [Column("name")]
         public string Name { get; set; } = "";
         [Column("backgroundcolor")]
-        public string BackgroundColor { get; set; } = "inherit";
+        public string BackgroundColor { get; set; } = "#dedca6";
         [Column("textcolor")]
-        public string TextColor { get; set; } = "inherit";
-        [Column("content")]
-        public string Content { get; set; } = "";
+        public string TextColor { get; set; } = "#000000";
+        [Column("icon")]
+        public string Icon { get; set; } = "";
+        [Column("iconcolor")]
+        public string IconColor { get; set; } = "#000000";
         [Column("created")]
         public DateTime Created { get; set; }
         [Column("modified")]
@@ -32,15 +34,8 @@ namespace AppNotes.Models
         [Column("favorite")]
         public bool Favorite { get; set; } = false;
         [Column("bookmark")]
-        public bool Bookmark { get; set; } = false;
-        [Column("notebook")]
-        public string Notebook { get; set; } = "";
-        [Column("position")]
-        public int Position { get; set; }
-        
+        public int Bookmark { get; set; }
         [Column("synchronized")]
         public bool Synchronized { get; set; } = false;
-        public string Icon { get; set; }
-        public string IconColor { get; set; }
     }
 }

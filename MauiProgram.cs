@@ -2,6 +2,8 @@
 using MudBlazor.Services;
 using Firebase;
 using AppNotes.Models;
+using System.Reactive.Concurrency;
+using AppNotes.Services;
 
 namespace AppNotes
 {
@@ -26,6 +28,7 @@ namespace AppNotes
 
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<ConexionBBDD>();
+            builder.Services.AddSingleton<SynchronizationService>();
 
             return builder.Build();
         }

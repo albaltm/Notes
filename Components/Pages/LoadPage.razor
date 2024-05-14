@@ -10,15 +10,21 @@
 
     protected async override void OnInitialized()
     {
-        //await JSRuntime.InvokeAsync<string>("localStorage.setItem", "usuario", "");
-        var valor = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "usuario");
-        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "conexion", "true");
-        if (valor == null || valor.Length == 0)
+        var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        if (string.IsNullOrWhiteSpace(token))
         {
             NavigationManager.NavigateTo("/login");
         }
         else
         {
+            if (token.Equals("guest"))
+            {
+                Guest = true;
+            }
+            else
+            {
+                Guest = false;
+            }
             NavigationManager.NavigateTo("/library");
         }
     }

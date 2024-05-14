@@ -1,0 +1,280 @@
+﻿@page "/editnotebook"
+@page "/editnotebook/{Id}"
+@using AppNotes.Components.Components
+@using AppNotes.Components.Layout
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
+@inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject SynchronizationService SynchronizationService
+@inherits Global
+@layout MainLayout
+
+@if (Notebook != null)
+{
+    <style>
+        #paper{
+            background-color: @BackgroundColor;
+            color: @TextColor
+        }
+    </style>
+
+    <div class="row p-0 justify-content-between">
+        @* TODO: etiquetas  *@
+        <div class="col-12 col-sm-4 d-flex d-sm-inline-block p-2"></div>
+        <div class="col-9 col-sm-4 d-flex mb-2 p-0">
+            <MudIconButton Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-right:0.2em;" />
+            <MudTextField @bind-Value="Name" Immediate Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" />
+            <MudIconButton Icon="@Icons.Material.Rounded.ArrowForwardIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-left:0.2em;" />
+        </div>
+        <div class="col-3 col-sm-4 d-flex justify-content-end mb-sm-5">
+            <MudMenu @ref="menu" Icon="@Icons.Material.Rounded.MoreVert" Color="Color.Inherit">
+                <MudMenuItem AutoClose=false Style="height:3.5em;" OnClick="@(() => pickerfondo.ToggleOpen())">
+                    <div class="p-0 d-flex position-relative" style="height:3.5em; font-size: 0.9em;">
+                        <span class="pt-4">Fondo</span>
+                        @if (!Notebook.BackgroundColor.Equals("inherit"))
+                        {
+                            <MudIconButton Class="position-absolute bottom-0 end-0" Style="margin-right:2.1em; margin-bottom:0.7em;" Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" OnClick="@(() => BackgroundColor = "inherit")"></MudIconButton>
+                            <input @bind-value="Notebook.BackgroundColor" type="color" disabled class="form-control form-control-color position-absolute bottom-0 end-0 mb-2" style="width:2.5em; border:none; background-color:inherit;" />
+                        }
+                        <MudColorPicker @ref="pickerfondo" @bind-Text="BackgroundColor" ReadOnly AdornmentIcon="" Class="position-absolute bottom-0 end-0" style="width:2.5em; color:transparent; margin-bottom:-5px;" ColorPickerView="ColorPickerView.GridCompact" PickerVariant="PickerVariant.Dialog" />
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem AutoClose=false Style="height:3.5em;" OnClick="@(() => pickertexto.ToggleOpen())">
+                    <div class="p-0 d-flex position-relative" style="height:3.5em; font-size: 0.9em;">
+                        <span class="pt-4">Texto</span>
+                        @if (!Notebook.TextColor.Equals("inherit"))
+                        {
+                            <MudIconButton Class="position-absolute bottom-0 end-0" Style="margin-right:2.1em; margin-bottom:0.7em;" Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" OnClick="@(() => TextColor = "inherit")"></MudIconButton>
+                            <input @bind-value="Notebook.TextColor" type="color" disabled class="form-control form-control-color position-absolute bottom-0 end-0 mb-2" style="width:2.5em; border:none; background-color:inherit;" />
+                        }
+                        <MudColorPicker @ref="pickertexto" @bind-Text="TextColor" ReadOnly AdornmentIcon="" Class="position-absolute bottom-0 end-0" style="width:2.5em; color:transparent; margin-bottom:-5px;" ColorPickerView="ColorPickerView.GridCompact" PickerVariant="PickerVariant.Dialog" />
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem AutoClose=false Style="height:3.5em; min-width:15em;" OnClick="@(() => pickericono.ToggleOpen())">
+                    <div class="p-0 pt-2 d-flex position-relative" style="height:3.5em; font-size: 0.9em;">
+                        <span class="me-4">
+                            <IconPicker @bind-Icon="@Icon" />
+                        </span>
+                        <span class="pt-2">Icono</span>
+                        @if (!Notebook.IconColor.Equals("inherit"))
+                        {
+                            <MudIconButton Class="position-absolute bottom-0 end-0" Style="margin-right:2.1em; margin-bottom:0.7em;" Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" OnClick="@(() => IconColor = "inherit")"></MudIconButton>
+                            <input @bind-value="Notebook.IconColor" type="color" disabled class="form-control form-control-color position-absolute bottom-0 end-0 mb-2" style="width:2.5em; border:none; background-color:inherit;" />
+                        }
+                        <MudColorPicker @ref="pickericono" @bind-Text="IconColor" ReadOnly AdornmentIcon="" Class="position-absolute bottom-0 end-0" style="width:2.5em; color:transparent; margin-bottom:-5px;" ColorPickerView="ColorPickerView.GridCompact" PickerVariant="PickerVariant.Dialog" />
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="@(() => Favorite = !Favorite)" OnTouch="@(() => Favorite = !Favorite)">
+                    <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
+                        <span class="pt-3">Destacado</span>
+                        <MudIcon Icon="@(Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem OnClick="DeleteNotebook" OnTouch="DeleteNotebook">
+                    <span style=" font-size: 0.9em;">Eliminar libreta</span>
+                </MudMenuItem>
+            </MudMenu>
+        </div>
+    </div>
+    <MudPaper id="paper" Style="width:90vw; height:65vh; max-width:30em;" Class="m-auto mt-sm-5 position-relative">
+        <h3 style="color:@Notebook.TextColor; margin-top:30%" class="position-absolute top-0 start-50 translate-middle-x text-center">
+            @Notebook.Name<br />
+            <span style="color:@Notebook.IconColor"><MudIcon Class="mt-5" Icon="@Notebook.Icon" Size="Size.Large" /></span>
+        </h3>
+    </MudPaper>
+}
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private MudMenu menu;
+    private MudColorPicker pickerfondo;
+    private MudColorPicker pickertexto;
+    private MudColorPicker pickericono;
+
+    private Notebook Notebook { get; set; }
+    private bool saved = true;
+
+    private string Name
+    {
+        get
+        {
+            return Notebook.Name;
+        }
+        set
+        {
+            Notebook.Name = value;
+            SaveNotebook();
+        }
+    }
+    private string BackgroundColor
+    {
+        get
+        {
+            return Notebook.BackgroundColor;
+        }
+        set
+        {
+            Notebook.BackgroundColor = value;
+            SaveNotebook();
+        }
+    }
+    private string TextColor
+    {
+        get
+        {
+            return Notebook.TextColor;
+        }
+        set
+        {
+            Notebook.TextColor = value;
+            SaveNotebook();
+        }
+    }
+    private string Icon
+    {
+        get
+        {
+            return Notebook.Icon;
+        }
+        set
+        {
+            Notebook.Icon = value;
+            SaveNotebook();
+        }
+    }
+    private string IconColor
+    {
+        get
+        {
+            return Notebook.IconColor;
+        }
+        set
+        {
+            Notebook.IconColor = value;
+            SaveNotebook();
+        }
+    }
+    private bool Favorite
+    {
+        get
+        {
+            return Notebook.Favorite;
+        }
+        set
+        {
+            Notebook.Favorite = value;
+            SaveNotebook();
+        }
+    }
+    private int Bookmark
+    {
+        get
+        {
+            return Notebook.Bookmark;
+        }
+        set
+        {
+            Notebook.Bookmark = value;
+            SaveNotebook();
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            var token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+            Notebook = new Notebook()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    User = token,
+                    Created = DateTime.UtcNow,
+                    Modified = DateTime.UtcNow,
+                };
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
+                var notefirebase = await client.Child("notebook").PostAsync(Notebook);
+                Notebook.Id = notefirebase.Key;
+                Notebook.User = userId;
+                Notebook.Synchronized = true;
+                await client.Child("notebook").Child(notefirebase.Key).PutAsync(Notebook);
+                client.Dispose();
+            }
+            catch { }
+            _conn.GetConnection().Insert(Notebook);
+            NavigationManager.NavigateTo($"/editnotebook/{Notebook.Id}");
+        }
+        else
+        {
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                Notebook = (await client.Child("notebook").OnceAsync<Notebook>()).Select(x => x.Object).Where(x => x.Id.Equals(Id)).ToList().FirstOrDefault();
+                client.Dispose();
+                if (!Notebook.Id.Equals(Id))
+                {
+                    NavigationManager.NavigateTo($"/editnotebook/{Notebook.Id}");
+                }
+            }
+            catch
+            {
+                Notebook = _conn.GetConnection().Get<Notebook>(Id);
+            }
+        }
+        SynchronizationService.TrySync();
+    }
+
+    private async void SaveNotebook()
+    {
+        StateHasChanged();
+        Notebook.Synchronized = false;
+        Notebook.Modified = DateTime.UtcNow;
+        saved = true;
+        try
+        {
+            FirebaseClient client = new FirebaseClient(FirebasePath);
+            await client.Child("notebook").Child(Notebook.Id).PutAsync(Notebook);
+            Notebook.Synchronized = true;
+            await client.Child("notebook").Child(Notebook.Id).PutAsync(Notebook);
+            client.Dispose();
+        }
+        catch { }
+        _conn.GetConnection().Update(Notebook);
+    }
+
+    private async void DeleteNotebook()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Eliminar",
+            "¿Seguro que quieres eliminar esta libreta?",
+            yesText: "Confirmar", noText: "Cancelar");
+        if (result == true)
+        {
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                await client.Child("notebook").Child(Notebook.Id).DeleteAsync();
+                client.Dispose();
+            }
+            catch
+            {
+                DeleteQueue item = new DeleteQueue()
+                    {
+                        Id = Notebook.Id,
+                        Type = DocumentType.Notebook
+                    };
+                _conn.GetConnection().Insert(item);
+            }
+            _conn.GetConnection().Delete(Notebook);
+            SynchronizationService.TrySync();
+            NavigationManager.NavigateTo("library");
+        }
+    }
+}

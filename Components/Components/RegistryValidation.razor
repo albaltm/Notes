@@ -49,13 +49,24 @@
             FirebaseClient client = new FirebaseClient(FirebasePath);
             if (Registryqueue.Code.ToString().Equals(recoveryCode))
             {
+                //registro usuario
                 await client.Child("registryvalidationqueue").Child(Registryqueue.Id).DeleteAsync();
-                var firebaseobject = await client.Child("usuarios").PostAsync(User);
-                User.Id = firebaseobject.Key;
-                await client.Child("usuarios").Child(firebaseobject.Key).PutAsync(User);
-                Snackbar.Add("Usuario registrado correctamente", Severity.Success);
+                var firebaseuser = await client.Child("users").PostAsync(User);
+                User.Id = firebaseuser.Key;
+                await client.Child("users").Child(firebaseuser.Key).PutAsync(User);
+
+                //creacion token
+                var authentication = new UserAuthentication()
+                {
+                    User = User.Id
+                };
+                var firebaseauth = await client.Child("userauthentication").PostAsync(authentication);
+                authentication.Token = firebaseauth.Key;
+                await client.Child("userauthentication").Child(firebaseauth.Key).PutAsync(authentication);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", authentication.Token);
+
                 client.Dispose();
-                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "usuario", User.Id);
+                Guest = false;
                 NavigationManager.NavigateTo("/");
             }
             else
@@ -75,6 +86,7 @@
         catch
         {
             Snackbar.Add("No se ha podido procesar la solicitud. Vuelve a intentarlo más tarde", Severity.Error);
+            Cancel();
         }
         loading = false;
     }

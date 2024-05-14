@@ -68,7 +68,7 @@
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
-                var usuarioExistente = (await client.Child("usuarios").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(correo.ToLower())).ToList().FirstOrDefault();
+                var usuarioExistente = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(correo.ToLower())).ToList().FirstOrDefault();
                 if (usuarioExistente != null)
                 {
                     Snackbar.Add("Este correo ya ha sido registrado", Severity.Error);
@@ -84,13 +84,12 @@
                         Registryqueue = new RegistryValidationQueue { EmailUser = correo.ToLower(), Code = code };
                         var queuefirebase = await client.Child("registryvalidationqueue").PostAsync(Registryqueue);
                         Registryqueue.Id = queuefirebase.Key;
-                        await client.Child("registryvalidationqueue").Child(queuefirebase.Key).PutAsync(Registryqueue);
                     }
                     else
                     {
                         Registryqueue.Code = code;
-                        await client.Child("registryvalidationqueue").Child(Registryqueue.Id).PutAsync(Registryqueue);
                     }
+                    await client.Child("registryvalidationqueue").Child(Registryqueue.Id).PutAsync(Registryqueue);
 
                     //enviar correo
                     User = new Usuario { 

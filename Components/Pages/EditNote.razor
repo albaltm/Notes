@@ -1,93 +1,130 @@
 ﻿@page "/editnote"
-@page "/editnote/{id:long?}"
+@page "/editnote/{Id}"
 @using AppNotes.Components.Layout
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
+@inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject SynchronizationService SynchronizationService
+@inherits Global
 @layout MainLayout
-<style>
-    .mud-picker-container{
-        max-width: 60vw;
-        overflow: auto;
-    }
 
-    .mud-switch{
-        margin:0;
-    }
+@if (Note != null)
+{
+    <style>
+        .mud-picker-container {
+            max-width: 70vw;
+            overflow: auto;
+        }
 
-    .rz-html-editor {
-        border: none;
-    }
+        .mud-switch {
+            margin: 0;
+        }
 
-    .rz-html-editor:focus-within {
-        outline-color: #a8a8a8;
-    }
+        .rz-html-editor {
+            border: none;
+        }
 
-    .rz-html-editor-toolbar {
-        background-color: inherit;
-        color: inherit;
-    }
+        .rz-html-editor:focus-within {
+            outline-color: #a8a8a8;
+        }
 
-    .rz-html-editor-button {
-        background-color: inherit;
-        color: inherit;
-    }
+        .rz-html-editor-toolbar {
+            background-color: inherit;
+            color: inherit;
+        }
 
-    .rz-html-editor-content {
-        background-color: inherit;
-        color: inherit;
-    }
+        .rz-html-editor-button {
+            background-color: inherit;
+            color: inherit;
+        }
 
-    .rz-html-editor-dropdown-items {
-        background-color: inherit;
-        color: inherit;
-    }
+        .rz-html-editor-content {
+            background-color: inherit;
+            color: inherit;
+        }
 
-    .rz-html-editor-dropdown-item {
-        background-color: inherit;
-        color: inherit;
-        font-size: 15px !important;
-        font-size: medium !important;
-    }
+        .rz-html-editor-dropdown-items {
+            background-color: inherit;
+            color: inherit;
+        }
 
-    .rz-html-editor-content {
-        background-color: @colorFondo.ToString();
-        color: @colorLetra.ToString();
-    }
-</style>
+        .rz-html-editor-dropdown-item {
+            background-color: inherit;
+            color: inherit;
+            font-size: 15px !important;
+            font-size: medium !important;
+        }
 
-<div class="row px-2">
-    @*TODO: etiquetas *@
-    <div class="col-12 col-md-5 d-flex mb-2 p-0 order-1 pt-2">
-        <MudIconButton Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-right:0.2em;" />
-        <MudTextField @bind-Value="Titulo" Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" Disabled="!Edicion" />
-        <MudIconButton Icon="@Icons.Material.Rounded.ArrowForwardIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-left:0.2em;" />
-    </div>
-    <div class="col-3 col-md-2 d-flex p-0 d-flex order-3 order-md-2 pt-2">
-        <MudSwitch @bind-Value="@Edicion" Class="mx-auto" ThumbIcon="@(Edicion==true ? Icons.Rounded.Edit : Icons.Rounded.Visibility)"
+        .rz-html-editor-content {
+            background-color: @Note.BackgroundColor.ToString();
+            color: @Note.TextColor.ToString();
+        }
+    </style>
+
+    <div class="row p-0 justify-content-between">
+        @* TODO: etiquetas  *@
+        <div class="col-12 col-sm-2 col-md-1 d-flex p-2">
+            <MudSwitch @bind-Value="@edicion" Class="mx-auto" ThumbIcon="@(edicion==true ? Icons.Material.Rounded.Edit : Icons.Material.Rounded.Visibility)"
                        ThumbIconColor="Color.Primary" Size="Size.Large" />
+        </div>
+        <div class="col-9 col-sm-6 col-md-5 d-flex mb-2 p-0 pt-2">
+            <MudIconButton Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-right:0.2em;" />
+            <MudTextField @bind-Value="Name" Immediate Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" Disabled="!edicion" />
+            <MudIconButton Icon="@Icons.Material.Rounded.ArrowForwardIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-left:0.2em;" />
+        </div>
+        <div class="col-3 col-sm-3 col-md-6 d-flex justify-content-end">
+            <MudMenu @ref="menu" Icon="@Icons.Material.Rounded.MoreVert" Color="Color.Inherit">
+                <MudMenuItem AutoClose=false Style="height:3.5em; overflow-hidden" OnClick="@(() => pickerfondo.ToggleOpen())">
+                    <div class="p-0 d-flex position-relative" style="height:3.5em; font-size: 0.9em;">
+                        <span class="pt-4">Fondo</span>
+                        @if(!Note.BackgroundColor.Equals("inherit"))
+                        {
+                            <MudIconButton Class="position-absolute bottom-0 end-0" Style="margin-right:2.1em; margin-bottom:0.7em;" Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" OnClick="@(() => BackgroundColor = "inherit")"></MudIconButton>
+                            <input @bind-value="Note.BackgroundColor" type="color" disabled class="form-control form-control-color position-absolute bottom-0 end-0 mb-2" style="width:2.5em; border:none; background-color:inherit;" />
+                        }
+                        <MudColorPicker @ref="pickerfondo" @bind-Text="BackgroundColor" ReadOnly AdornmentIcon="" Class="position-absolute bottom-0 end-0" style="width:2.5em; color:transparent; margin-bottom:-5px;" ColorPickerView="ColorPickerView.GridCompact" PickerVariant="PickerVariant.Dialog" />
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem AutoClose=false Style="height:3.5em; overflow-hidden" OnClick="@(() => pickertexto.ToggleOpen())">
+                    <div class="p-0 d-flex position-relative" style="height:3.5em; font-size: 0.9em;">
+                        <span class="pt-4">Texto</span>
+                        @if (!Note.TextColor.Equals("inherit"))
+                        {
+                            <MudIconButton Class="position-absolute bottom-0 end-0" Style="margin-right:2.1em; margin-bottom:0.7em;" Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" OnClick="@(() => TextColor = "inherit")"></MudIconButton>
+                            <input @bind-value="Note.TextColor" type="color" disabled class="form-control form-control-color position-absolute bottom-0 end-0 mb-2" style="width:2.5em; border:none; background-color:inherit;" />
+                        }
+                        <MudColorPicker @ref="pickertexto" @bind-Text="TextColor" ReadOnly AdornmentIcon="" Class="position-absolute bottom-0 end-0" style="width:2.5em; color:transparent; margin-bottom:-5px;" ColorPickerView="ColorPickerView.GridCompact" PickerVariant="PickerVariant.Dialog" />
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="@(() => Favorite = !Favorite)" OnTouch="@(() => Favorite = !Favorite)">
+                    <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
+                        <span class="pt-3">Destacado</span>
+                        <MudIcon Icon="@(Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
+                    </div>
+                </MudMenuItem>
+                @if (!string.IsNullOrWhiteSpace(Note.Notebook))
+                {
+                    <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="@(() => Bookmark = !Bookmark)" OnTouch="@(() => Bookmark = !Bookmark)">
+                        <div class="p-0 pt-1 d-flex position-relative" style="height:3em; font-size: 0.9em; min-width:10em;">
+                            <span class="pt-3">Marcapáginas</span>
+                            <MudIcon Icon="@(Bookmark ? Icons.Material.Rounded.Bookmark : Icons.Material.Rounded.BookmarkBorder)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
+                        </div>
+                    </MudMenuItem>
+                }
+                <MudMenuItem OnClick="DeleteNote" OnTouch="DeleteNote">
+                    <span style=" font-size: 0.9em;">Eliminar nota</span>
+                </MudMenuItem>
+            </MudMenu>
+        </div>
     </div>
-    <div class="col-5 col-md-3 d-flex justify-content-around order-2 order-md-3">
-            <div class="p-0 d-flex position-relative">
-            <input @bind-value="colorFondo" type="color" disabled class="form-control form-control-color position-absolute bottom-0 mb-1" style="width:2.5em; border:none; background-color:inherit;" />
-                <MudColorPicker @bind-Text="colorFondo" AdornmentIcon="" Label="Fondo" style="width:2.5em; color:transparent" ColorPickerView="ColorPickerView.GridCompact" />
-            </div>
-            <div class="p-0 d-flex position-relative">
-                <input @bind-value="colorLetra" type="color" disabled class="form-control form-control-color position-absolute bottom-0 mb-1" style="width:2.5em; border:none; background-color:inherit;" />
-                <MudColorPicker @bind-Text="colorLetra" AdornmentIcon="" Label="Letra" style="width:2.5em; color:transparent" ColorPickerView="ColorPickerView.GridCompact" />
-            </div>
-    </div>
-    <div class="col-2 col-md-1 p-0 d-flex order-4 pt-2">
-        <MudToggleIconButton @bind-Toggled="@Destacado" Icon="@Icons.Material.Rounded.StarOutline" Color="@Color.Primary" Title="Destacar" Size="Size.Medium"
-                             Class="mx-auto" ToggledIcon="@Icons.Material.Rounded.Star" ToggledColor="@Color.Primary" ToggledTitle="Destacada" ToggledSize="Size.Medium" />
-    </div>
-    <div class="col-2 col-md-1 p-0 d-flex order-5 pt-2">
-        <MudToggleIconButton @bind-Toggled="@Marcado" Icon="@Icons.Material.Rounded.BookmarkBorder" Size="Size.Medium" Color="@Color.Primary" Title="Destacar"
-                             Class="mx-auto" ToggledIcon="@Icons.Material.Rounded.Bookmark" ToggledSize="Size.Medium" ToggledColor="@Color.Primary" ToggledTitle="Destacada" />
-    </div>
-</div>
 
-
-<RadzenHtmlEditor @bind-Value=@htmlValue ShowToolbar="Edicion" Disabled="!Edicion" style="min-height:60vh; margin-top:2em;">
+    <RadzenHtmlEditor @bind-Value=@Content @onkeypress=@(() => saved = false) ShowToolbar="edicion" Disabled="!edicion" style="min-height:60vh; margin-top:2em;">
         <RadzenHtmlEditorUndo Title="Deshacer" Shortcut="Ctrl+Z" />
-        @* <RadzenHtmlEditorRedo Title="Rehacer" Shortcut="Ctrl+Y" /> *@
+        <RadzenHtmlEditorRedo Title="Rehacer" Shortcut="Ctrl+Y" />
         <RadzenHtmlEditorSeparator />
         <RadzenHtmlEditorBold Title="Negrita" Shortcut="Ctrl+B" />
         <RadzenHtmlEditorItalic Title="Cursiva" Shortcut="Ctrl+I" />
@@ -103,55 +140,193 @@
         <RadzenHtmlEditorOutdent Title="Disminuir sangría" />
         <RadzenHtmlEditorOrderedList Title="Lista" />
         <RadzenHtmlEditorSeparator />
-        @* <RadzenHtmlEditorFormatBlock Title="Formato" Placeholder="Formato" Heading1Text="Titulo" Heading2Text="Subtítulo" Heading3Text="Encabezado1" Heading4Text="Encabezado3" Heading5Text="Encabezado4" Heading6Text="Encabezado5" /> *@
         <RadzenHtmlEditorFontName Title="Fuente" Placeholder="Fuente" />
-        <RadzenHtmlEditorFontSize  Title="Tamaño" Placeholder="Tamaño" />
+        <RadzenHtmlEditorFontSize Title="Tamaño" Placeholder="Tamaño" />
+        @if (!saved)
+        {
+            <MudIconButton Icon="@Icons.Material.Rounded.Save" Color="Color.Primary" Size="Size.Small" />
+        }
     </RadzenHtmlEditor>
-
+}
 @code {
-    string htmlValue;
-
     [Parameter]
-    public long? Id { get; set; }
+    public string? Id { get; set; }
+
+    private MudMenu menu;
+    private MudColorPicker pickerfondo;
+    private MudColorPicker pickertexto;
 
     private Note Note { get; set; }
-    private string Titulo { get; set; }
-    private bool Edicion = true;
-    private bool Destacado = false;
-    private bool Marcado = false;
-    private string colorFondo = "inherit";
-    private string colorLetra = "inherit";
+    private bool edicion = true;
+    private bool saved = true;
 
-    protected override void OnInitialized()
+    private string Content
     {
-        base.OnInitialized();
-        if (Id == null)
+        get
         {
-            //crear nota nueva
+            return Note.Content;
         }
-        else
+        set
         {
-            //editar nota existente
+            Note.Content = value;
+            SaveNote();
+        }
+    }
+    private string Name
+    {
+        get
+        {
+            return Note.Name;
+        }
+        set
+        {
+            Note.Name = value;
+            SaveNote();
+        }
+    }
+    private string BackgroundColor
+    {
+        get
+        {
+            return Note.BackgroundColor;
+        }
+        set
+        {
+            Note.BackgroundColor = value;
+            menu.CloseMenu();
+            SaveNote();
+        }
+    }
+    private string TextColor
+    {
+        get
+        {
+            return Note.TextColor;
+        }
+        set
+        {
+            Note.TextColor = value;
+            menu.CloseMenu();
+            SaveNote();
+        }
+    }
+    private bool Favorite
+    {
+        get
+        {
+            return Note.Favorite;
+        }
+        set
+        {
+            Note.Favorite = value;
+            SaveNote();
+        }
+    }
+    private bool Bookmark
+    {
+        get
+        {
+            return Note.Bookmark;
+        }
+        set
+        {
+            Note.Bookmark = value;
+            SaveNote();
         }
     }
 
-    // async Task OnExecute(HtmlEditorExecuteEventArgs args)
-    // {
-    //     if (args.CommandName == "InsertToday")
-    //     {
-    //         await InsertDate(args.Editor, DateTime.Now);
-    //     }
-    // }
+    protected async override Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            var token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+            Note = new Note()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    User = token,
+                    Created = DateTime.UtcNow,
+                    Modified = DateTime.UtcNow,
+                };
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
+                var notefirebase = await client.Child("note").PostAsync(Note);
+                Note.Id = notefirebase.Key;
+                Note.User = userId;
+                Note.Synchronized = true;
+                await client.Child("note").Child(notefirebase.Key).PutAsync(Note);
+                client.Dispose();
+            }
+            catch { }
+            _conn.GetConnection().Insert(Note);
+            NavigationManager.NavigateTo($"/editnote/{Note.Id}");
+        }
+        else
+        {
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                Note = (await client.Child("note").OnceAsync<Note>()).Select(x => x.Object).Where(x => x.Id.Equals(Id)).ToList().FirstOrDefault();
+                client.Dispose();
+                if (!Note.Id.Equals(Id))
+                {
+                    NavigationManager.NavigateTo($"/editnote/{Note.Id}");
+                }
+            }
+            catch
+            {
+                Note = _conn.GetConnection().Get<Note>(Id);
+            }
+        }
+        SynchronizationService.TrySync();
+    }
 
-    // async Task InsertDate(RadzenHtmlEditor editor, DateTime date)
-    // {
-    //     await editor.ExecuteCommandAsync(HtmlEditorCommands.InsertHtml, $"<strong>{date.ToLongDateString()}</strong>");
-    // }
-    // async Task OnDateChange(DateTime? date, RadzenHtmlEditor editor)
-    // {
-    //     if (date != null)
-    //     {
-    //         await InsertDate(editor, date.Value);
-    //     }
-    // }
+    private async void SaveNote()
+    {
+        StateHasChanged();
+        Note.Synchronized = false;
+        Note.Modified = DateTime.UtcNow;
+        saved = true;
+        try
+        {
+            FirebaseClient client = new FirebaseClient(FirebasePath);
+            await client.Child("note").Child(Note.Id).PutAsync(Note);
+            Note.Synchronized = true;
+            await client.Child("note").Child(Note.Id).PutAsync(Note);
+            client.Dispose();
+        }
+        catch { }
+        _conn.GetConnection().Update(Note);
+        SynchronizationService.TrySync();
+    }
+
+    private async void DeleteNote()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Eliminar",
+            "¿Seguro que quieres eliminar esta nota?",
+            yesText: "Confirmar", noText:"Cancelar");
+        if (result == true)
+        {
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                await client.Child("note").Child(Note.Id).DeleteAsync();
+                client.Dispose();
+            }
+            catch
+            {
+                DeleteQueue item = new DeleteQueue()
+                    {
+                        Id = Note.Id,
+                        Type = DocumentType.Note
+                    };
+                _conn.GetConnection().Insert(item);
+            }
+            _conn.GetConnection().Delete(Note);
+            SynchronizationService.TrySync();
+            NavigationManager.NavigateTo("library");
+        }
+    }
 }

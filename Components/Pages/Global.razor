@@ -2,6 +2,8 @@
 @code {
     public readonly string FirebasePath = "https://appnotes-d61d3-default-rtdb.firebaseio.com/";
 
+    public bool Guest { get; set; } = true;
+
     public IEnumerable<MudColor> CustomPalette { get; set; } = new MudColor[]
     {
         "#ffffff", "#ebabab", "#ebd4ab", "#ebe1ab", "#ddebab",
@@ -12,6 +14,7 @@
 
     public List<string> CustomIcons = new List<string>()
     {
+        "",
         Icons.Material.Rounded.Search,
         Icons.Material.Rounded.Home,
         Icons.Material.Rounded.Done,

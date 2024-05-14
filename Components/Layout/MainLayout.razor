@@ -1,6 +1,11 @@
 ﻿@using AppNotes.Components.Pages
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
+@inject ConexionBBDD _conn
+@inject SynchronizationService SynchronizationService
 @inherits LayoutComponentBase
 
 <div class="page" style="height:100vh;">
@@ -16,14 +21,11 @@
                     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
                 </MudHidden>
                 <MudSpacer />
-                @* movil
-                <MudHidden Breakpoint="Breakpoint.SmAndUp">
-                <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Class="mx-auto text-light" /></MudLink>
-                <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Color="Color.Inherit" Class="mx-auto text-light" />
-                <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Inherit" Class="mx-auto text-light" />
-                <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Inherit" Class="mx-auto text-light" />
-                </MudHidden>*@
-
+                @if (!SynchronizationService.Synchronized)
+                {
+                     <MudIcon Icon="@Icons.Material.Rounded.WifiOff" />
+                }
+                <MudSpacer />
                 @* comun *@
                 <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit" class="text-light">
                     <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
@@ -76,13 +78,16 @@
                 </MudNavMenu>
             </MudDrawer>
             <MudMainContent>
-                <article class="content px-4">
-                    @Body
-                </article>
+                <CascadingValue Value="this">
+                    <article class="content px-4">
+                        @Body
+                    </article>
+                </CascadingValue>
+                
             </MudMainContent>
             <MudHidden Breakpoint="Breakpoint.SmAndUp">
                 <MudAppBar Bottom="true" Fixed="true" Color="@Color.Primary" Elevation="1" Dense>
-                    <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book"  Class="mx-auto text-light" /></MudLink>
+                    <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Class="mx-auto text-light" /></MudLink>
                     <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Color="Color.Inherit" Class="mx-auto text-light" />
                     <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Inherit" Class="mx-auto text-light" />
                     <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Inherit" Class="mx-auto text-light" />
@@ -129,14 +134,18 @@
     MudTheme userTheme { get; set; }
     bool open = true;
 
+    private string FirebasePath = "https://appnotes-d61d3-default-rtdb.firebaseio.com/";
+    public bool Synchronized { get; set; } = true;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        SynchronizationService.OnSynchronizationChanged += ActualizarIcono;
         if (firstRender)
         {
             var darkmode = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode");
             if (darkmode == null)
             {
-                await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode", "system");
+                await JSRuntime.InvokeAsync<string>("localStorage.setItem", "darkmode", "system");
                 darkModeSystem = "system";
             }
             else
@@ -149,13 +158,48 @@
                 _isDarkMode = await _mudThemeProvider.GetSystemPreference();
             }
             await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+            TryAccessByToken();
+            SynchronizationService.TrySync();
             StateHasChanged();
         }
     }
 
+    public void Dispose()
+    {
+        SynchronizationService.OnSynchronizationChanged -= ActualizarIcono;
+    }
+    private void ActualizarIcono()
+    {
+        StateHasChanged();
+    }
+
+    public async void TryAccessByToken()
+    {
+        try
+        {
+            FirebaseClient client = new FirebaseClient(FirebasePath);
+            var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+            var sessiontoken = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault();
+            client.Dispose();
+            if (!token.Equals("guest") && sessiontoken==null)
+            {
+                CerrarSesion();
+            }
+        }
+        catch { }
+    }
+
     public async void CerrarSesion()
     {
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "usuario", "");
+        _conn.Vaciar();
+        try
+        {
+            FirebaseClient client = new FirebaseClient(FirebasePath);
+            var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+            await client.Child("userauthentication").Child(token).DeleteAsync();
+        }
+        catch { }
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", "");
         NavigationManager.NavigateTo("/");
     }
 

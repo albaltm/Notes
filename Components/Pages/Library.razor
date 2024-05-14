@@ -1,14 +1,100 @@
 ﻿@page "/library"
 @using AppNotes.Components.Layout
 @using AppNotes.Components.Components
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
 @layout MainLayout
+@inherits Global
 @inject IJSRuntime JsRuntime;
 @inject NavigationManager NavigationManager
+@inject ConexionBBDD _conn
+@inject SynchronizationService SynchronizationService
 
+@if(Elements != null) 
+{
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 m-2">
+        @foreach (var element in Elements)
+        {
 
+            if (element is Note)
+            {
+                <div class="px-2">
+                    <div class="col position-relative mb-3" @onclick="() => Access(element)"
+                         style="background-color:@element.BackgroundColor; height:5em; border-radius:15px; cursor:pointer; border: 2px solid grey">
+                        <span style="color: @element.TextColor;" class="position-absolute top-50 start-50 translate-middle">@element.Name</span>
+                    </div>
+                </div>
+            }
+            else if (element is Notebook)
+            {
+                <div class="px-2">
+                    <div class="col position-relative mb-3 bordertype" @onclick="() => Access(element)"
+                         style="background-color:@element.BackgroundColor; height:5em; border-radius:15px; cursor:pointer; border: 2px double grey">
+                        <span style="color:@element.IconColor" class="position-absolute top-50 translate-middle-y ms-4"><MudIcon Icon="@element.Icon" /></span><span style="color: @element.TextColor;" class="position-absolute top-50 start-50 translate-middle">@element.Name</span>
+                    </div>
+                </div>
+            }
+               
+        }
+    </div>
+}
 
 <CreateButton/>
 
 @code {
-    
+    private List<IBiblioteca> Elements { get; set; }
+
+    protected async override void OnParametersSet()
+    {
+        try
+        {
+            //elementos en el servidor
+            Elements = new();
+            SynchronizationService.TrySync();
+            FirebaseClient client = new FirebaseClient(FirebasePath);
+            var token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+            var userId = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).ToList().FirstOrDefault()?.Id;
+            List<Note> notesfirebase = (await client.Child("note").OnceAsync<Note>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
+            List<Notebook> notebooksfirebase = (await client.Child("notebook").OnceAsync<Notebook>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
+            foreach (var note in notesfirebase)
+            {
+                Elements.Add(note);
+            }
+            foreach (var notebook in notebooksfirebase)
+            {
+                Elements.Add(notebook);
+            }
+            client.Dispose();
+        }
+        catch
+        {
+            //elementos local
+            Elements = new();
+            var noteslocal = _conn.GetNotes();
+            var notebookslocal = _conn.GetNotebooks();
+            foreach (var note in noteslocal)
+            {
+                Elements.Add(note);
+            }
+            foreach (var notebook in notebookslocal)
+            {
+                Elements.Add(notebook);
+            }
+        }
+        Elements.OrderByDescending(x => x.Modified);
+        StateHasChanged();
+    }
+
+    public void Access(IBiblioteca element)
+    {
+        if (element is Note)
+        {
+            NavigationManager.NavigateTo($"/editnote/{element.Id}");
+        }
+        else if (element is Notebook)
+        {
+            NavigationManager.NavigateTo($"/editnotebook/{element.Id}");
+        }
+    }
 }

@@ -1,6 +1,7 @@
 ﻿@page "/login"
 @using AppNotes.Components.Components
 @using Firebase.Database
+@using Firebase.Database.Query
 @using MudBlazor.Services
 @using AppNotes.Components.Layout
 @using System.Security.Cryptography
@@ -16,12 +17,17 @@
 <div class="col-11 col-sm-8 col-md-6 m-auto bg-light position-relative d-block py-5" style="height: 100vh">
     <div class="position-absolute top-50 start-50 translate-middle w-100">
         <img src="images/@(imagen).png" class="mx-auto d-block" style="width:45%; max-width:30vh;" />
-        <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-6 mx-auto d-flex">
-            <MudTextField Style="max-height: 10vh;" @bind-Value="correo" Placeholder="Correo electrónico" Variant="MudBlazor.Variant.Outlined"></MudTextField>
-        </div>
-        <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-2 mx-auto d-flex">
-            <MudTextField Style="max-height: 10vh;" @bind-Value="passwd" @onfocusin="() => CambioImagen(false)" Placeholder="Contraseña" Variant="MudBlazor.Variant.Outlined" Adornment="Adornment.End" InputType="@(mostrarPasswd ? InputType.Text : InputType.Password)" AdornmentIcon="@(mostrarPasswd ? Icons.Material.Rounded.VisibilityOff : Icons.Material.Rounded.Visibility)" OnAdornmentClick="@(() => CambioImagen(true))" @onkeypress="Enter"/>
-        </div>
+        <MudForm @ref="form">
+            <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-6 mx-auto d-flex">
+                <MudTextField Style="max-height: 10vh;" @bind-Value="Correo" Placeholder="Correo electrónico" Variant="MudBlazor.Variant.Outlined"></MudTextField>
+            </div>
+            <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-2 mx-auto d-flex">
+                <MudTextField Style="max-height: 10vh;" @bind-Value="Passwd" @onfocusin="() => ChangeIcon(false)" Placeholder="Contraseña" 
+                    Variant="MudBlazor.Variant.Outlined" Adornment="Adornment.End" InputType="@(ShowPasswd ? InputType.Text : InputType.Password)" 
+                    AdornmentIcon="@(ShowPasswd ? Icons.Material.Rounded.VisibilityOff : Icons.Material.Rounded.Visibility)"
+                    OnAdornmentClick="@(() => ChangeIcon(true))" Validation="@(new Func<string, Task<string>>(ValidateLogin))" @onkeypress="Enter" />
+            </div>
+        </MudForm>
         <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-1 mx-auto d-flex">
             <span class="col-12 text-muted text-end" style="font-size:90%; cursor:pointer" @onclick="OpenDialog">Recuperar contraseña</span>
         </div>
@@ -36,18 +42,20 @@
 </div>
 @code {
     string imagen = "login_looking_down";
+    MudForm form;
 
-    string correo { get; set; }
-    string passwd { get; set; }
-    bool mostrarPasswd = false;
+    string UserId { get; set; }
+    string Correo { get; set; }
+    string Passwd { get; set; }
+    bool ShowPasswd = false;
 
-    private void CambioImagen(bool cambioMostrar)
+    private void ChangeIcon(bool changeShow)
     {
-        if (cambioMostrar == true)
+        if (changeShow == true)
         {
-            mostrarPasswd = !mostrarPasswd;
+            ShowPasswd = !ShowPasswd;
         }
-        if (mostrarPasswd)
+        if (ShowPasswd)
         {
             imagen = "login_looking_down";
         }
@@ -57,22 +65,45 @@
         }
     }
 
-    private async void IniciarSesion()
+    private async Task<string> ValidateLogin(string pw)
     {
         try
         {
             FirebaseClient client = new FirebaseClient(FirebasePath);
-            var user = (await client.Child("usuarios").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(correo.ToLower())).ToList().FirstOrDefault();
-            if (user == null || !GetSHA1(passwd).Equals(user.Password))
+            var user = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(Correo.ToLower())).ToList().FirstOrDefault();
+            if (user == null || !GetSHA1(pw).Equals(user.Password))
             {
-                Snackbar.Add("El correo o la contraseña introducidos no son correctos", Severity.Error);
+                return "El correo o la contraseña introducidos no son correctos";
             }
-            else
+            UserId = user.Id;
+            client.Dispose();
+        }
+        catch
+        {
+            return "No se ha podido iniciar sesión. Vuelve a intentarlo más tarde";
+        }
+        return null;
+    }
+
+    private async void IniciarSesion()
+    {
+        try
+        {
+            await form.Validate();
+            if (form.IsValid)
             {
-                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "usuario", user.Id);
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                var authentication = new UserAuthentication()
+                    {
+                        User = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(Correo.ToLower())).FirstOrDefault().Id
+                    };
+                var firebaseauth = await client.Child("userauthentication").PostAsync(authentication);
+                authentication.Token = firebaseauth.Key;
+                await client.Child("userauthentication").Child(firebaseauth.Key).PutAsync(authentication);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", authentication.Token);
+                client.Dispose();
                 NavigationManager.NavigateTo("/");
             }
-            client.Dispose();
         }
         catch
         {
@@ -88,10 +119,8 @@
             yesText: "Confirmar", cancelText: "Cancelar");
         if (result != null)
         {
-            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "conexion", "false");
-            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "usuario", "false");
-            _connection.Vaciar();
-            NavigationManager.NavigateTo("/library");
+            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "token", "guest");
+            NavigationManager.NavigateTo("/");
         }
     }
 
