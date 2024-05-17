@@ -35,15 +35,16 @@
     .rz-dropdown-items-wrapper {
         background-color: inherit;
         width: 60vw;
-        max-width: 10em;
+        max-width: 20em;
         padding: 0 0.8em;
         text-align: justify;
         box-shadow: 1px 1px 6px #515151;
-        max-height: 10em;
+        height:30vh;
+        max-height: 8em;
     }
 </style>
 
-<RadzenDropDown @bind-Value=@Icon Data=@CustomIcons Style="background-color:transparent; height:2.2em;" class="py-1 px-2">
+<RadzenDropDown @bind-Value=@Icon Data=@CustomIcons Style="background-color:transparent; height:2.2em;" class="py-1 px-2 d-inline-block">
     <Template>
         <MudIcon @onclick="@(() => SelectIcon(context as string))" Icon="@((context as string))" Size="Size.Medium" Color="Color.Default" Class="position-absolute top-0 start-0 p-1" style="background-color: rgba(54, 54, 54, 0.1); border-radius:50%;" />
     </Template>

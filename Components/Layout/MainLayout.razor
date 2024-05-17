@@ -5,7 +5,6 @@
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject ConexionBBDD _conn
-@inject SynchronizationService SynchronizationService
 @inherits LayoutComponentBase
 
 <div class="page" style="height:100vh;">
@@ -21,11 +20,11 @@
                     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
                 </MudHidden>
                 <MudSpacer />
-                @if (!SynchronizationService.Synchronized)
+                @* @if (!SynchronizationService.Synchronized)
                 {
                      <MudIcon Icon="@Icons.Material.Rounded.WifiOff" />
                 }
-                <MudSpacer />
+                <MudSpacer /> *@
                 @* comun *@
                 <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit" class="text-light">
                     <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
@@ -137,36 +136,33 @@
     private string FirebasePath = "https://appnotes-d61d3-default-rtdb.firebaseio.com/";
     public bool Synchronized { get; set; } = true;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async void OnInitialized()
     {
-        SynchronizationService.OnSynchronizationChanged += ActualizarIcono;
-        if (firstRender)
+        // SynchronizationService.OnSynchronizationChanged += ActualizarIcono;
+
+        var darkmode = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode");
+        if (darkmode == null)
         {
-            var darkmode = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode");
-            if (darkmode == null)
-            {
-                await JSRuntime.InvokeAsync<string>("localStorage.setItem", "darkmode", "system");
-                darkModeSystem = "system";
-            }
-            else
-            {
-                darkModeSystem = darkmode;
-            }
-            GetUserTheme();
-            if (DarkModeSystem.Equals("system"))
-            {
-                _isDarkMode = await _mudThemeProvider.GetSystemPreference();
-            }
-            await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
-            TryAccessByToken();
-            SynchronizationService.TrySync();
-            StateHasChanged();
+            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "darkmode", "system");
+            darkModeSystem = "system";
         }
+        else
+        {
+            darkModeSystem = darkmode;
+        }
+        GetUserTheme();
+        if (DarkModeSystem.Equals("system"))
+        {
+            _isDarkMode = await _mudThemeProvider.GetSystemPreference();
+        }
+        await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+        TryAccessByToken();
+        StateHasChanged();
     }
 
     public void Dispose()
     {
-        SynchronizationService.OnSynchronizationChanged -= ActualizarIcono;
+        // SynchronizationService.OnSynchronizationChanged -= ActualizarIcono;
     }
     private void ActualizarIcono()
     {

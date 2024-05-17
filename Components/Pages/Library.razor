@@ -10,32 +10,56 @@
 @inject NavigationManager NavigationManager
 @inject ConexionBBDD _conn
 @inject SynchronizationService SynchronizationService
+@inject IDialogService DialogService
 
-@if(Elements != null) 
+@if(Notes != null) 
 {
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 m-2">
-        @foreach (var element in Elements)
-        {
+    <div class="d-flex">
+        <MudFab StartIcon="@Icons.Material.Rounded.ImportContacts" OnClick="CreateNotebook" Color="Color.Default" Size="Size.Small" Style="cursor:pointer; min-width:3em; margin-right:1em;"/>
+        <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="ps-2 pb-3">
+            
+            @foreach (var notebook in Notebooks)
+            {
+                <MudMenu ActivationEvent="@MouseEvent.RightClick">
+                    <ActivatorContent>
+                        @if (notebook.Favorite)
+                        {
+                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 border border-secondary shadow" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => Access(notebook)" />
+                        }
+                        else
+                        {
+                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 shadow-sm" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => Access(notebook)" />
+                        }
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem OnClick="() => EditNotebook(notebook)" OnTouch="() => EditNotebook(notebook)">Editar</MudMenuItem>
+                        <MudMenuItem OnClick="() => DeleteNotebook(notebook)" OnTouch="() => DeleteNotebook(notebook)">Eliminar</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            }
+        </MudStack>
+    </div>
+        
+  
 
-            if (element is Note)
-            {
-                <div class="px-2">
-                    <div class="col position-relative mb-3" @onclick="() => Access(element)"
-                         style="background-color:@element.BackgroundColor; height:5em; border-radius:15px; cursor:pointer; border: 2px solid grey">
-                        <span style="color: @element.TextColor;" class="position-absolute top-50 start-50 translate-middle">@element.Name</span>
-                    </div>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 m-2 mt-4">
+        @foreach (var note in Notes)
+        {
+            <div class="px-2">
+                <div class="col mb-3 py-3 py-md-4 py-lg-5 px-1 shadow" @onclick="() => Access(note)"
+                     style="background-color:@note.BackgroundColor; border-radius:15px; cursor:pointer; border: 1px solid grey;">
+                    <span style="color: @note.TextColor;" class="overflow-hidden d-flex justify-content-between mx-auto">
+                        <span style="color:@note.TextColor; width:3em;">
+                            @if (note.Favorite)
+                            {
+                                <MudIcon Icon="@Icons.Material.Rounded.Star" Size="Size.Small"></MudIcon>
+                            }
+                        </span>
+                        <span>@note.Name</span>
+                        <span style="width:3em;"></span>
+                    </span>
                 </div>
-            }
-            else if (element is Notebook)
-            {
-                <div class="px-2">
-                    <div class="col position-relative mb-3 bordertype" @onclick="() => Access(element)"
-                         style="background-color:@element.BackgroundColor; height:5em; border-radius:15px; cursor:pointer; border: 2px double grey">
-                        <span style="color:@element.IconColor" class="position-absolute top-50 translate-middle-y ms-4"><MudIcon Icon="@element.Icon" /></span><span style="color: @element.TextColor;" class="position-absolute top-50 start-50 translate-middle">@element.Name</span>
-                    </div>
-                </div>
-            }
-               
+            </div>
         }
     </div>
 }
@@ -43,46 +67,17 @@
 <CreateButton/>
 
 @code {
-    private List<IBiblioteca> Elements { get; set; }
+    private List<Note> Notes { get; set; }
+    private List<Notebook> Notebooks { get; set; }
+    string token;
 
-    protected async override void OnParametersSet()
+    protected async override void OnInitialized()
     {
-        try
-        {
-            //elementos en el servidor
-            Elements = new();
-            SynchronizationService.TrySync();
-            FirebaseClient client = new FirebaseClient(FirebasePath);
-            var token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-            var userId = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).ToList().FirstOrDefault()?.Id;
-            List<Note> notesfirebase = (await client.Child("note").OnceAsync<Note>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-            List<Notebook> notebooksfirebase = (await client.Child("notebook").OnceAsync<Notebook>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-            foreach (var note in notesfirebase)
-            {
-                Elements.Add(note);
-            }
-            foreach (var notebook in notebooksfirebase)
-            {
-                Elements.Add(notebook);
-            }
-            client.Dispose();
-        }
-        catch
-        {
-            //elementos local
-            Elements = new();
-            var noteslocal = _conn.GetNotes();
-            var notebookslocal = _conn.GetNotebooks();
-            foreach (var note in noteslocal)
-            {
-                Elements.Add(note);
-            }
-            foreach (var notebook in notebookslocal)
-            {
-                Elements.Add(notebook);
-            }
-        }
-        Elements.OrderByDescending(x => x.Modified);
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        await SynchronizationService.TrySync(token);
+
+        Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+        Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
         StateHasChanged();
     }
 
@@ -94,7 +89,66 @@
         }
         else if (element is Notebook)
         {
-            NavigationManager.NavigateTo($"/editnotebook/{element.Id}");
+            NavigationManager.NavigateTo($"/editnotebook/{element.Id}");            
+        }
+    }
+
+    public void CreateNotebook()
+    {
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        DialogService.Show<EditNotebook>("Libreta", options);
+    }
+
+    private void EditNotebook(Notebook notebook)
+    {
+        var parameters = new DialogParameters<EditNotebook>();
+        parameters.Add(x => x.Id, notebook.Id);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        DialogService.Show<EditNotebook>("Libreta", parameters, options);
+    }
+
+    private async void DeleteNotebook(Notebook notebook)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Eliminar",
+            "¿Seguro que quieres eliminar esta libreta?",
+            yesText: "Confirmar", noText: "Cancelar");
+        if (result == true)
+        {
+            if (!token.Equals("guest"))
+            {
+                try
+                {
+                    FirebaseClient client = new FirebaseClient(FirebasePath);
+                    await client.Child("notebook").Child(notebook.Id).DeleteAsync();
+                    client.Dispose();
+                }
+                catch
+                {
+                    DeleteQueue item = new DeleteQueue()
+                        {
+                            Id = notebook.Id,
+                            Type = DocumentType.Notebook
+                        };
+                    _conn.GetConnection().Insert(item);
+                }
+            }
+            _conn.GetConnection().Delete(notebook);
+            NavigationManager.NavigateTo("library", true);
         }
     }
 }

@@ -14,9 +14,5 @@ namespace AppNotes.Models
         DateTime Created { get; set; }
         DateTime Modified { get; set; }
         bool Favorite { get; set; }
-        public string BackgroundColor { get; set; } 
-        public string TextColor { get; set; }
-        public string Icon { get; set; } 
-        public string IconColor { get; set; }
     }
 }

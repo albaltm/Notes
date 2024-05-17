@@ -1,0 +1,165 @@
+﻿@using AppNotes.Components.Components
+@using AppNotes.Components.Layout
+@using AppNotes.Components.Pages
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
+@inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject SynchronizationService SynchronizationService
+@inherits Global
+
+<MudDialog @onkeypress="@Enter">
+    <DialogActions>
+        <div class="d-flex w-100">
+            <MudIconButton OnClick="SaveNotebook" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+        </div>
+    </DialogActions>
+    <DialogContent>
+        @if(Notebook != null)
+        {
+            <div class="p-0 d-flex">
+                <span class="m-4">
+                    <IconPicker @bind-Icon="@Icon" />
+                </span>
+                <span style="width:100%;" class="me-4"><MudTextField @bind-Value="Name" Immediate Placeholder="Título" Style="display:inline-block;" /></span>
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public string? Id { get; set; }
+
+    void Cancel() => MudDialog.Cancel();
+
+
+    private void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            SaveNotebook();
+        }
+    }
+
+    private MudMenu menu;
+    private MudColorPicker pickericono;
+
+    private Notebook Notebook { get; set; }
+
+    private string Name
+    {
+        get
+        {
+            return Notebook.Name;
+        }
+        set
+        {
+            Notebook.Name = value;
+        }
+    }
+    private string Icon
+    {
+        get
+        {
+            return Notebook.Icon;
+        }
+        set
+        {
+            Notebook.Icon = value;
+        }
+    }
+    private bool Favorite
+    {
+        get
+        {
+            return Notebook.Favorite;
+        }
+        set
+        {
+            Notebook.Favorite = value;
+        }
+    }
+    private int Bookmark
+    {
+        get
+        {
+            return Notebook.Bookmark;
+        }
+        set
+        {
+            Notebook.Bookmark = value;
+        }
+    }
+
+    private string token;
+
+    protected async override Task OnInitializedAsync()
+    {
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        await SynchronizationService.TrySync(token);
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            Notebook = new Notebook()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    User = token,
+                    Created = DateTime.UtcNow,
+                    Modified = DateTime.UtcNow,
+                };
+        }
+        else
+        {
+            Notebook = _conn.GetNotebook(Id);
+        }
+    }
+
+    private async void SaveNotebook()
+    {
+        Notebook.Modified = DateTime.UtcNow;
+        if(Id == null)
+        {
+            if (!token.Equals("guest"))
+            {
+                try
+                {
+                    FirebaseClient client = new FirebaseClient(FirebasePath);
+                    var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
+                    var notefirebase = await client.Child("notebook").PostAsync(Notebook);
+                    Notebook.Id = notefirebase.Key;
+                    Notebook.User = userId;
+                    await client.Child("notebook").Child(notefirebase.Key).PutAsync(Notebook);
+                    client.Dispose();
+                }
+                catch
+                {
+                    var createQueue = new CreateQueue()
+                        {
+                            Id = Notebook.Id,
+                            Type = DocumentType.Notebook
+                        };
+                    _conn.Conn.Insert(createQueue);
+                }
+            }
+            _conn.GetConnection().Insert(Notebook);
+        }
+        else
+        {
+            if (!token.Equals("guest"))
+            {
+                try
+                {
+                    FirebaseClient client = new FirebaseClient(FirebasePath);
+                    await client.Child("notebook").Child(Notebook.Id).PutAsync(Notebook);
+                    client.Dispose();
+                }
+                catch { }
+            }
+            _conn.GetConnection().Update(Notebook);
+        }
+        NavigationManager.NavigateTo("/library", true);
+    }
+}

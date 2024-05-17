@@ -37,10 +37,5 @@ namespace AppNotes.Models
         public string Notebook { get; set; } = "";
         [Column("position")]
         public int Position { get; set; }
-        
-        [Column("synchronized")]
-        public bool Synchronized { get; set; } = false;
-        public string Icon { get; set; }
-        public string IconColor { get; set; }
     }
 }

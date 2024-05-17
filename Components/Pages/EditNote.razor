@@ -106,6 +106,12 @@
                         <MudIcon Icon="@(Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
                     </div>
                 </MudMenuItem>
+                <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;">
+                    <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
+                        <span class="pt-3">Libreta</span>
+                        <MudIcon Icon="@(Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
+                    </div>
+                </MudMenuItem>
                 @if (!string.IsNullOrWhiteSpace(Note.Notebook))
                 {
                     <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="@(() => Bookmark = !Bookmark)" OnTouch="@(() => Bookmark = !Bookmark)">
@@ -156,6 +162,7 @@
     private MudColorPicker pickerfondo;
     private MudColorPicker pickertexto;
 
+    private string token;
     private Note Note { get; set; }
     private bool edicion = true;
     private bool saved = true;
@@ -237,9 +244,10 @@
 
     protected async override Task OnInitializedAsync()
     {
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        SynchronizationService.TrySync(token);
         if (string.IsNullOrWhiteSpace(Id))
         {
-            var token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
             Note = new Note()
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -247,58 +255,53 @@
                     Created = DateTime.UtcNow,
                     Modified = DateTime.UtcNow,
                 };
-            try
+            if (!token.Equals("guest"))
             {
-                FirebaseClient client = new FirebaseClient(FirebasePath);
-                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
-                var notefirebase = await client.Child("note").PostAsync(Note);
-                Note.Id = notefirebase.Key;
-                Note.User = userId;
-                Note.Synchronized = true;
-                await client.Child("note").Child(notefirebase.Key).PutAsync(Note);
-                client.Dispose();
+                try
+                {
+                    FirebaseClient client = new FirebaseClient(FirebasePath);
+                    var notefirebase = await client.Child("note").PostAsync(Note);
+                    var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
+                    Note.User = userId;
+                    Note.Id = notefirebase.Key;
+                    await client.Child("note").Child(notefirebase.Key).PutAsync(Note);
+                    client.Dispose();
+                }
+                catch
+                {
+                    var createQueue = new CreateQueue()
+                        {
+                            Id = Note.Id,
+                            Type = DocumentType.Note
+                        };
+                    _conn.Conn.Insert(createQueue);
+                }
             }
-            catch { }
-            _conn.GetConnection().Insert(Note);
+            _conn.Conn.Insert(Note);
             NavigationManager.NavigateTo($"/editnote/{Note.Id}");
         }
         else
         {
-            try
-            {
-                FirebaseClient client = new FirebaseClient(FirebasePath);
-                Note = (await client.Child("note").OnceAsync<Note>()).Select(x => x.Object).Where(x => x.Id.Equals(Id)).ToList().FirstOrDefault();
-                client.Dispose();
-                if (!Note.Id.Equals(Id))
-                {
-                    NavigationManager.NavigateTo($"/editnote/{Note.Id}");
-                }
-            }
-            catch
-            {
-                Note = _conn.GetConnection().Get<Note>(Id);
-            }
+            Note = _conn.GetNote(Id);
         }
-        SynchronizationService.TrySync();
     }
 
     private async void SaveNote()
     {
-        StateHasChanged();
-        Note.Synchronized = false;
         Note.Modified = DateTime.UtcNow;
-        saved = true;
-        try
+        if (!token.Equals("guest"))
         {
-            FirebaseClient client = new FirebaseClient(FirebasePath);
-            await client.Child("note").Child(Note.Id).PutAsync(Note);
-            Note.Synchronized = true;
-            await client.Child("note").Child(Note.Id).PutAsync(Note);
-            client.Dispose();
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                await client.Child("note").Child(Note.Id).PutAsync(Note);
+                await client.Child("note").Child(Note.Id).PutAsync(Note);
+                client.Dispose();
+            }
+            catch { }
         }
-        catch { }
         _conn.GetConnection().Update(Note);
-        SynchronizationService.TrySync();
+        saved = true;
     }
 
     private async void DeleteNote()
@@ -309,23 +312,25 @@
             yesText: "Confirmar", noText:"Cancelar");
         if (result == true)
         {
-            try
+            if (!token.Equals("guest"))
             {
-                FirebaseClient client = new FirebaseClient(FirebasePath);
-                await client.Child("note").Child(Note.Id).DeleteAsync();
-                client.Dispose();
+                try
+                {
+                    FirebaseClient client = new FirebaseClient(FirebasePath);
+                    await client.Child("note").Child(Note.Id).DeleteAsync();
+                    client.Dispose();
+                }
+                catch
+                {
+                    DeleteQueue item = new DeleteQueue()
+                        {
+                            Id = Note.Id,
+                            Type = DocumentType.Note
+                        };
+                    _conn.Conn.Insert(item);
+                }
             }
-            catch
-            {
-                DeleteQueue item = new DeleteQueue()
-                    {
-                        Id = Note.Id,
-                        Type = DocumentType.Note
-                    };
-                _conn.GetConnection().Insert(item);
-            }
-            _conn.GetConnection().Delete(Note);
-            SynchronizationService.TrySync();
+            _conn.Conn.Delete(Note);
             NavigationManager.NavigateTo("library");
         }
     }

@@ -35,7 +35,5 @@ namespace AppNotes.Models
         public bool Favorite { get; set; } = false;
         [Column("bookmark")]
         public int Bookmark { get; set; }
-        [Column("synchronized")]
-        public bool Synchronized { get; set; } = false;
     }
 }
