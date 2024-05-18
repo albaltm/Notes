@@ -33,10 +33,10 @@ public class ConexionBBDD
 
     public void Vaciar()
     {
-        Conn.DeleteAll<Note>();
-        Conn.DeleteAll<Notebook>();
-        Conn.DeleteAll<CreateQueue>();
-        Conn.DeleteAll<DeleteQueue>();
+        Conn.DropTable<Note>();
+        Conn.DropTable<Notebook>();
+        Conn.DropTable<CreateQueue>();
+        Conn.DropTable<DeleteQueue>();
     }
 
     public Note GetNote(string id)
@@ -54,16 +54,6 @@ public class ConexionBBDD
         }
         return notes;
     }
-    public List<Note> GetNotesByUser(string id)
-    {
-        List<Note> notes = new List<Note>();
-        var query = Conn.CreateCommand($"SELECT * FROM Note WHERE User = '{id}'").ExecuteDeferredQuery<Note>();
-        foreach (var note in query)
-        {
-            notes.Add(note);
-        }
-        return notes;
-    }
 
     public Notebook GetNotebook(string id)
     {
@@ -74,16 +64,6 @@ public class ConexionBBDD
     {
         List<Notebook> notebooks = new List<Notebook>();
         var query = Conn.CreateCommand("select * from Notebook").ExecuteDeferredQuery<Notebook>();
-        foreach (var notebook in query)
-        {
-            notebooks.Add(notebook);
-        }
-        return notebooks;
-    }
-    public List<Notebook> GetNotebooksByUser(string id)
-    {
-        List<Notebook> notebooks = new List<Notebook>();
-        var query = Conn.CreateCommand($"SELECT * FROM Notebook WHERE User = '{id}'").ExecuteDeferredQuery<Notebook>();
         foreach (var notebook in query)
         {
             notebooks.Add(notebook);

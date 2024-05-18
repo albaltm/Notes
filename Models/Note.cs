@@ -31,11 +31,9 @@ namespace AppNotes.Models
         //public List<string> Tags { get; set; }
         [Column("favorite")]
         public bool Favorite { get; set; } = false;
-        [Column("bookmark")]
-        public bool Bookmark { get; set; } = false;
         [Column("notebook")]
         public string Notebook { get; set; } = "";
         [Column("position")]
-        public int Position { get; set; }
+        public int Position { get; set; } = -1;
     }
 }

@@ -1,11 +1,18 @@
 ﻿@page "/login"
 @using AppNotes.Components.Components
+@using Firebase.Auth
+@using Firebase.Auth.Providers
 @using Firebase.Database
 @using Firebase.Database.Query
 @using MudBlazor.Services
 @using AppNotes.Components.Layout
+@using System;
+@using System.Threading.Tasks;
+@using FirebaseAdmin;
+@using Google.Apis.Auth.OAuth2;
 @using System.Security.Cryptography
 @using System.Text
+@using Newtonsoft.Json
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
@@ -13,6 +20,8 @@
 @inject ConexionBBDD _connection
 @layout EmptyLayout
 @inherits Global
+
+
 
 <div class="col-11 col-sm-8 col-md-6 m-auto bg-light position-relative d-block py-5" style="height: 100vh">
     <div class="position-absolute top-50 start-50 translate-middle w-100">
@@ -25,7 +34,7 @@
                 <MudTextField Style="max-height: 10vh;" @bind-Value="Passwd" @onfocusin="() => ChangeIcon(false)" Placeholder="Contraseña" 
                     Variant="MudBlazor.Variant.Outlined" Adornment="Adornment.End" InputType="@(ShowPasswd ? InputType.Text : InputType.Password)" 
                     AdornmentIcon="@(ShowPasswd ? Icons.Material.Rounded.VisibilityOff : Icons.Material.Rounded.Visibility)"
-                    OnAdornmentClick="@(() => ChangeIcon(true))" Validation="@(new Func<string, Task<string>>(ValidateLogin))" @onkeypress="Enter" />
+                    OnAdornmentClick="@(() => ChangeIcon(true))" @onkeypress="Enter" />
             </div>
         </MudForm>
         <div class="col-9 col-sm-8 col-lg-7 col-xl-6 mt-1 mx-auto d-flex">
@@ -65,24 +74,26 @@
         }
     }
 
-    private async Task<string> ValidateLogin(string pw)
+    private async Task<bool> ValidateLogin()
     {
         try
         {
             FirebaseClient client = new FirebaseClient(FirebasePath);
             var user = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(Correo.ToLower())).ToList().FirstOrDefault();
-            if (user == null || !GetSHA1(pw).Equals(user.Password))
+            if (user == null || !GetSHA1(Passwd).Equals(user.Password))
             {
-                return "El correo o la contraseña introducidos no son correctos";
+                Snackbar.Add("El correo o la contraseña introducidos no son correctos", Severity.Error);
+                return false;
             }
             UserId = user.Id;
             client.Dispose();
         }
         catch
         {
-            return "No se ha podido iniciar sesión. Vuelve a intentarlo más tarde";
+            Snackbar.Add("No se ha podido iniciar sesión. Vuelve a intentarlo más tarde", Severity.Error);
+            return false;
         }
-        return null;
+        return true;
     }
 
     private async void IniciarSesion()
@@ -90,19 +101,29 @@
         try
         {
             await form.Validate();
-            if (form.IsValid)
+            if (form.IsValid && await ValidateLogin())
             {
-                FirebaseClient client = new FirebaseClient(FirebasePath);
-                var authentication = new UserAuthentication()
+                var config = new FirebaseAuthConfig
                     {
-                        User = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(Correo.ToLower())).FirstOrDefault().Id
+                        AuthDomain = "localhost",
+                        ApiKey = "AIzaSyBLaICwRVx-wyVBiL9qsOCR84VPmDs51Tw"
                     };
-                var firebaseauth = await client.Child("userauthentication").PostAsync(authentication);
-                authentication.Token = firebaseauth.Key;
-                await client.Child("userauthentication").Child(firebaseauth.Key).PutAsync(authentication);
-                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", authentication.Token);
-                client.Dispose();
-                NavigationManager.NavigateTo("/");
+
+                try
+                {
+                    FirebaseClient client = new FirebaseClient(FirebasePath);
+                    var authentication = new UserAuthentication()
+                        {
+                            User = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Email.ToLower().Equals(Correo.ToLower())).FirstOrDefault().Id
+                        };
+                    var firebaseauth = await client.Child("userauthentication").PostAsync(authentication);
+                    authentication.Token = firebaseauth.Key;
+                    await client.Child("userauthentication").Child(firebaseauth.Key).PutAsync(authentication);
+                    await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", authentication.Token);
+                    client.Dispose();
+                    NavigationManager.NavigateTo("/");
+                }
+                catch { }
             }
         }
         catch

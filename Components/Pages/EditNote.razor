@@ -72,9 +72,15 @@
                        ThumbIconColor="Color.Primary" Size="Size.Large" />
         </div>
         <div class="col-9 col-sm-6 col-md-5 d-flex mb-2 p-0 pt-2">
-            <MudIconButton Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-right:0.2em;" />
-            <MudTextField @bind-Value="Name" Immediate Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" Disabled="!edicion" />
-            <MudIconButton Icon="@Icons.Material.Rounded.ArrowForwardIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em; margin-left:0.2em;" />
+            @if (CanChangePage)
+            {
+                <MudIconButton OnClick="() => ChangePage(true)" Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em;" />
+            }
+            <MudTextField @bind-Value="Name" Immediate Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" Class="mx-3" Disabled="!edicion" />
+            @if (CanChangePage)
+            {
+                <MudIconButton OnClick="() => ChangePage(false)" Icon="@Icons.Material.Rounded.ArrowForwardIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em;" />
+            }
         </div>
         <div class="col-3 col-sm-3 col-md-6 d-flex justify-content-end">
             <MudMenu @ref="menu" Icon="@Icons.Material.Rounded.MoreVert" Color="Color.Inherit">
@@ -103,12 +109,6 @@
                 <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="@(() => Favorite = !Favorite)" OnTouch="@(() => Favorite = !Favorite)">
                     <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
                         <span class="pt-3">Destacado</span>
-                        <MudIcon Icon="@(Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
-                    </div>
-                </MudMenuItem>
-                <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;">
-                    <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
-                        <span class="pt-3">Libreta</span>
                         <MudIcon Icon="@(Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
                     </div>
                 </MudMenuItem>
@@ -233,19 +233,21 @@
     {
         get
         {
-            return Note.Bookmark;
+            return _conn.GetNotebook(Note.Notebook).Bookmark == Note.Position;
         }
         set
         {
-            Note.Bookmark = value;
-            SaveNote();
+            var notebook = _conn.GetNotebook(Note.Notebook);
+            notebook.Bookmark = Note.Position;
+            _conn.Conn.Update(notebook);
         }
     }
+    private bool CanChangePage { get; set; } = false;
 
     protected async override Task OnInitializedAsync()
     {
         token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        SynchronizationService.TrySync(token);
+        await SynchronizationService.TrySyncLibrary(token);
         if (string.IsNullOrWhiteSpace(Id))
         {
             Note = new Note()
@@ -284,22 +286,17 @@
         {
             Note = _conn.GetNote(Id);
         }
+
+        if (!string.IsNullOrEmpty(Note.Notebook))
+        {
+            var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook));
+            CanChangePage = notes.Count() > 1;
+        }
     }
 
-    private async void SaveNote()
+    private void SaveNote()
     {
         Note.Modified = DateTime.UtcNow;
-        if (!token.Equals("guest"))
-        {
-            try
-            {
-                FirebaseClient client = new FirebaseClient(FirebasePath);
-                await client.Child("note").Child(Note.Id).PutAsync(Note);
-                await client.Child("note").Child(Note.Id).PutAsync(Note);
-                client.Dispose();
-            }
-            catch { }
-        }
         _conn.GetConnection().Update(Note);
         saved = true;
     }
@@ -309,9 +306,19 @@
         bool? result = await DialogService.ShowMessageBox(
             "Eliminar",
             "¿Seguro que quieres eliminar esta nota?",
-            yesText: "Confirmar", noText:"Cancelar");
+            yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
+            var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook) && !x.Id.Equals(Note.Id)).OrderBy(x => x.Position).ToList();
+            var num = 0;
+            foreach (var notetoposition in notesinnotebook)
+            {
+                notetoposition.Position = num;
+                notetoposition.Modified = DateTime.UtcNow;
+                _conn.Conn.Update(notetoposition);
+                num++;
+            }
+
             if (!token.Equals("guest"))
             {
                 try
@@ -325,13 +332,28 @@
                     DeleteQueue item = new DeleteQueue()
                         {
                             Id = Note.Id,
-                            Type = DocumentType.Note
+                            Type = DocumentType.Notebook
                         };
-                    _conn.Conn.Insert(item);
+                    _conn.GetConnection().Insert(item);
                 }
             }
-            _conn.Conn.Delete(Note);
-            NavigationManager.NavigateTo("library");
+            _conn.GetConnection().Delete(Note);
+            NavigationManager.NavigateTo("library", true);
         }
+    }
+
+    public async void ChangePage(bool previous)
+    {
+        await SynchronizationService.TrySyncLibrary(token);
+        var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook));
+        int nextPosition = (Note.Position + 1) % notes.Count();
+        if (previous)
+        {
+            nextPosition = (Note.Position - 1 + notes.Count()) % notes.Count();
+        }
+        Note = notes.Where(x => x.Position == nextPosition).First();
+        Id = Note.Id;
+        CanChangePage = notes.Count() > 1;
+        NavigationManager.NavigateTo($"/editnote/{Id}");
     }
 }

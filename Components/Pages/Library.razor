@@ -12,23 +12,32 @@
 @inject SynchronizationService SynchronizationService
 @inject IDialogService DialogService
 
+<style>
+    .mud-chip-transparency{
+        opacity: 0.8;
+    }
+
+    #notemenu{
+        width:100%;
+    }
+</style>
+
 @if(Notes != null) 
 {
     <div class="d-flex">
-        <MudFab StartIcon="@Icons.Material.Rounded.ImportContacts" OnClick="CreateNotebook" Color="Color.Default" Size="Size.Small" Style="cursor:pointer; min-width:3em; margin-right:1em;"/>
-        <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="ps-2 pb-3">
-            
+        <MudFab StartIcon="@Icons.Material.Rounded.Add" OnClick="CreateNotebook" Color="Color.Default" Size="Size.Small" Style="cursor:pointer; min-width:3em; margin-right:1em;"/>
+        <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="px-2 pb-3">
             @foreach (var notebook in Notebooks)
             {
                 <MudMenu ActivationEvent="@MouseEvent.RightClick">
                     <ActivatorContent>
                         @if (notebook.Favorite)
                         {
-                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 border border-secondary shadow" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => Access(notebook)" />
+                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 shadow" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => AccessNotebook(notebook)" />
                         }
                         else
                         {
-                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 shadow-sm" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => Access(notebook)" />
+                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 mud-chip-transparency shadow" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => AccessNotebook(notebook)" />
                         }
                     </ActivatorContent>
                     <ChildContent>
@@ -46,25 +55,34 @@
         @foreach (var note in Notes)
         {
             <div class="px-2">
-                <div class="col mb-3 py-3 py-md-4 py-lg-5 px-1 shadow" @onclick="() => Access(note)"
-                     style="background-color:@note.BackgroundColor; border-radius:15px; cursor:pointer; border: 1px solid grey;">
-                    <span style="color: @note.TextColor;" class="overflow-hidden d-flex justify-content-between mx-auto">
-                        <span style="color:@note.TextColor; width:3em;">
-                            @if (note.Favorite)
-                            {
-                                <MudIcon Icon="@Icons.Material.Rounded.Star" Size="Size.Small"></MudIcon>
-                            }
-                        </span>
-                        <span>@note.Name</span>
-                        <span style="width:3em;"></span>
-                    </span>
-                </div>
+                <MudMenu id="notemenu" ActivationEvent="@MouseEvent.RightClick" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                     <ActivatorContent >
+                        <div class="col mb-3 py-3 py-md-4 py-lg-5 px-1 shadow" @onclick="() => AccessNote(note)"
+                             style="background-color:@note.BackgroundColor; border-radius:15px; cursor:pointer; border: 1px ridge #ababab;">
+                            <span style="color: @note.TextColor; height:1.4em;" class="overflow-hidden d-flex justify-content-between mx-auto">
+                                <span style="color:@note.TextColor; width:3em;">
+                                    @if (note.Favorite)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Rounded.StarOutline" Size="Size.Small" Class="ms-1" Style="width:0.7em;"></MudIcon>
+                                    }
+                                </span>
+                                <span>@note.Name</span>
+                                <span style="width:3em;"></span>
+                            </span>
+                        </div>
+                    
+                     </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem OnClick="() => DeleteNote(note)" OnTouch="() => DeleteNote(note)">Eliminar</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
             </div>
         }
     </div>
 }
 
-<CreateButton/>
+<CreateButton />
+
 
 @code {
     private List<Note> Notes { get; set; }
@@ -81,15 +99,24 @@
         StateHasChanged();
     }
 
-    public void Access(IBiblioteca element)
+    public void AccessNote(Note note)
     {
-        if (element is Note)
+        NavigationManager.NavigateTo($"/editnote/{note.Id}");
+    }
+
+    public async void AccessNotebook(Notebook notebook)
+    {
+        var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id));
+        if (notes.Count() > 0)
         {
-            NavigationManager.NavigateTo($"/editnote/{element.Id}");
-        }
-        else if (element is Notebook)
-        {
-            NavigationManager.NavigateTo($"/editnotebook/{element.Id}");            
+            if (notebook.Bookmark != -1)
+            {
+                NavigationManager.NavigateTo($"/editnote/{notes.Where(x => x.Position == notebook.Bookmark).First().Id}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo($"/editnote/{notes.Where(x => x.Position == 0).First().Id}");
+            }
         }
     }
 
@@ -129,6 +156,15 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
+            var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id)).ToList();
+            foreach (var note in notes)
+            {
+                note.Modified = DateTime.UtcNow;
+                note.Notebook = "";
+                note.Position = -1;
+                _conn.GetConnection().Update(note);
+            }
+
             if (!token.Equals("guest"))
             {
                 try
@@ -148,7 +184,66 @@
                 }
             }
             _conn.GetConnection().Delete(notebook);
-            NavigationManager.NavigateTo("library", true);
+            
+            await SynchronizationService.TrySyncLibrary(token);
+            Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+            Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+            StateHasChanged();
+        }
+    }
+
+    private async void DeleteNote(Note note)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Eliminar",
+            "¿Seguro que quieres eliminar esta nota?",
+            yesText: "Confirmar", noText: "Cancelar");
+        if (result == true)
+        {
+            var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id)).OrderBy(x => x.Position).ToList();
+            var num = 0;
+            foreach (var notetoposition in notesinnotebook)
+            {
+                notetoposition.Position = num;
+                notetoposition.Modified = DateTime.UtcNow;
+                _conn.Conn.Update(notetoposition);
+                num++;
+            }
+
+            if (!string.IsNullOrEmpty(note.Notebook))
+            {
+                var notebook = _conn.GetNotebook(note.Notebook);
+                if (notebook.Bookmark == note.Position)
+                {
+                    notebook.Bookmark = -1;
+                    _conn.Conn.Update(notebook);
+                }
+            }
+
+            if (!token.Equals("guest"))
+            {
+                try
+                {
+                    FirebaseClient client = new FirebaseClient(FirebasePath);
+                    await client.Child("note").Child(note.Id).DeleteAsync();
+                    client.Dispose();
+                }
+                catch
+                {
+                    DeleteQueue item = new DeleteQueue()
+                        {
+                            Id = note.Id,
+                            Type = DocumentType.Notebook
+                        };
+                    _conn.GetConnection().Insert(item);
+                }
+            }
+            _conn.GetConnection().Delete(note);
+            
+            await SynchronizationService.TrySyncLibrary(token);
+            Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+            Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+            StateHasChanged();
         }
     }
 }

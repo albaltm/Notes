@@ -34,6 +34,6 @@ namespace AppNotes.Models
         [Column("favorite")]
         public bool Favorite { get; set; } = false;
         [Column("bookmark")]
-        public int Bookmark { get; set; }
+        public int Bookmark { get; set; } = -1;
     }
 }
