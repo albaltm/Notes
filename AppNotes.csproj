@@ -82,7 +82,7 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
         <PackageReference Include="MudBlazor" Version="6.19.1" />
-        <PackageReference Include="Radzen.Blazor" Version="4.30.1" />
+        <PackageReference Include="Radzen.Blazor" Version="4.31.5" />
         <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
         <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.8" />
     </ItemGroup>

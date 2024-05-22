@@ -17,7 +17,7 @@ namespace AppNotes.Services
 {
     public class SynchronizationService(ConexionBBDD _conn)
     {
-        private string FirebasePath = "https://appnotes-d61d3-default-rtdb.firebaseio.com/";
+        private readonly string FirebasePath = "https://appnotes-d61d3-default-rtdb.firebaseio.com/";
         
         public async Task TrySync(string token)
         {
@@ -26,7 +26,9 @@ namespace AppNotes.Services
                 FirebaseClient client = new FirebaseClient(FirebasePath);
                 var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
                 client.Dispose();
+                
                 await TrySyncLibrary(token);
+                await TrySyncEvents(token);
             }
             catch { }
         }
@@ -40,11 +42,12 @@ namespace AppNotes.Services
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
-                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
-                client.Dispose();
+                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
 
-                await SyncDeleteQueueLibrary();
-                await SyncCreateQueueLibrary(userId);
+                await SyncCreateQueueLibrary(client, userId);
+                await SyncDeleteQueueLibrary(client);
+                
+                client.Dispose();
 
                 var notesFirebase = (await client.Child("note").OnceAsync<Note>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
                 var notes = _conn.GetNotes();
@@ -118,13 +121,65 @@ namespace AppNotes.Services
             catch { }
             
         }
-        private async Task SyncDeleteQueueLibrary()
+        public async Task TrySyncEvents(string token)
         {
+            if (token.Equals("guest"))
+            {
+                return;
+            }
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
+                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
                 
-                var deletequeue = _conn.GetDeleteQueue();
+                await SyncCreateQueueEvents(client,userId);
+                await SyncDeleteQueueEvents(client);
+
+                client.Dispose();
+
+                var eventsFirebase = (await client.Child("event").OnceAsync<Event>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
+                var events = _conn.GetEvents();
+                foreach (var eventFirebase in eventsFirebase)
+                {
+                    Event? evento = _conn.GetEvent(eventFirebase.Id);
+                    if (evento == null)
+                    {
+                        //se ha creado en otro dispositivo
+                        _conn.Conn.Insert(eventFirebase);
+                    }
+                    else
+                    {
+                        events.Remove(events.First(x => x.Id == evento.Id));
+                        if (eventFirebase.Modified != evento.Modified)
+                        {
+                            //la ultima modificacion no concuerda
+                            if (eventFirebase.Modified > evento.Modified)
+                            {
+                                _conn.Conn.Update(eventFirebase);
+                            }
+                            else
+                            {
+                                await client.Child("event").Child(evento.Id).PutAsync(evento);
+                            }
+                        }
+                    }
+
+                }
+
+                //si algo se ha eliminado en otro dispositivo
+                foreach (var evento in events)
+                {
+                    _conn.Conn.Delete(evento);
+                }
+            }
+            catch { }
+            
+        }
+        private async Task SyncDeleteQueueLibrary(FirebaseClient client)
+        {
+            try
+            {
+                var deletequeue = _conn.GetDeleteQueue().Where(x => x.Type == DocumentType.Note || x.Type == DocumentType.Notebook);
                 foreach (var item in deletequeue)
                 {
                     if (item.Type == DocumentType.Note)
@@ -137,16 +192,27 @@ namespace AppNotes.Services
                     }
                     _conn.Conn.Delete(item);
                 }
-                client.Dispose();
             }
             catch { }
         }
-        private async Task SyncCreateQueueLibrary(string userId)
+        private async Task SyncDeleteQueueEvents(FirebaseClient client)
         {
             try
             {
-                FirebaseClient client = new FirebaseClient(FirebasePath);
-                var createqueue = _conn.GetCreateQueue();
+                var deletequeue = _conn.GetDeleteQueue().Where(x => x.Type == DocumentType.Event);
+                foreach (var item in deletequeue)
+                {
+                    await client.Child("event").Child(item.Id).DeleteAsync();
+                    _conn.Conn.Delete(item);
+                }
+            }
+            catch { }
+        }
+        private async Task SyncCreateQueueLibrary(FirebaseClient client, string userId)
+        {
+            try
+            {
+                var createqueue = _conn.GetCreateQueue().Where(x => x.Type == DocumentType.Note || x.Type == DocumentType.Notebook);
                 foreach (var item in createqueue)
                 {
                     if (item.Type == DocumentType.Note)
@@ -171,7 +237,26 @@ namespace AppNotes.Services
                     }
                     _conn.Conn.Delete(item);
                 }
-                client.Dispose();
+            }
+            catch { }
+        }
+        private async Task SyncCreateQueueEvents(FirebaseClient client, string userId)
+        {
+            try
+            {
+                var createqueue = _conn.GetCreateQueue().Where(x => x.Type == DocumentType.Event);
+                foreach (var item in createqueue)
+                {
+                    var evento = _conn.GetEvent(item.Id);
+                    _conn.Conn.Delete(evento);
+                    evento.User = userId;
+                    var firebaseItem = await client.Child("event").PostAsync(evento);
+                    evento.Id = firebaseItem.Key;
+                    await client.Child("event").Child(evento.Id).PutAsync(evento);
+                    _conn.Conn.Insert(evento);
+
+                    _conn.Conn.Delete(item);
+                }
             }
             catch { }
         }

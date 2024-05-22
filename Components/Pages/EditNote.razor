@@ -1,6 +1,7 @@
 ﻿@page "/editnote"
 @page "/editnote/{Id}"
 @using AppNotes.Components.Layout
+@using AppNotes.Components.Components
 @using AppNotes.Services
 @using Firebase.Database
 @using Firebase.Database.Query
@@ -9,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 @inject SynchronizationService SynchronizationService
+@inject LibraryService LibraryService
 @inherits Global
 @layout MainLayout
 
@@ -35,6 +37,7 @@
         .rz-html-editor-toolbar {
             background-color: inherit;
             color: inherit;
+            padding: 0; 1em;
         }
 
         .rz-html-editor-button {
@@ -45,6 +48,8 @@
         .rz-html-editor-content {
             background-color: inherit;
             color: inherit;
+            padding-top: 1em;
+            padding-bottom: 1em;
         }
 
         .rz-html-editor-dropdown-items {
@@ -66,24 +71,23 @@
     </style>
 
     <div class="row p-0 justify-content-between">
-        @* TODO: etiquetas  *@
-        <div class="col-12 col-sm-2 col-md-1 d-flex p-2">
-            <MudSwitch @bind-Value="@edicion" Class="mx-auto" ThumbIcon="@(edicion==true ? Icons.Material.Rounded.Edit : Icons.Material.Rounded.Visibility)"
-                       ThumbIconColor="Color.Primary" Size="Size.Large" />
+        <div class="col" style="max-width:3em; padding:0; padding-top:0.6em; margin:0; padding-right:4em;">
+            <MudSwitch @bind-Value="@edicion" ThumbIcon="@(edicion==true ? Icons.Material.Rounded.Edit : Icons.Material.Rounded.Visibility)"
+                       ThumbIconColor="Color.Primary" />
         </div>
-        <div class="col-9 col-sm-6 col-md-5 d-flex mb-2 p-0 pt-2">
+        <div class="col p-0 m-0 d-flex" style="max-width:30em;">
             @if (CanChangePage)
             {
-                <MudIconButton OnClick="() => ChangePage(true)" Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em;" />
+                <MudIconButton OnClick="() => ChangePage(true)" Icon="@Icons.Material.Rounded.ArrowBackIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em;" Class="ms-3" />
             }
-            <MudTextField @bind-Value="Name" Immediate Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" Class="mx-3" Disabled="!edicion" />
+            <MudTextField @bind-Value="Name" Immediate Placeholder="Título" Style="height:1.5em; padding-bottom:1em;" Class="mx-1" Disabled="!edicion" />
             @if (CanChangePage)
             {
                 <MudIconButton OnClick="() => ChangePage(false)" Icon="@Icons.Material.Rounded.ArrowForwardIos" Size="Size.Small" Style="height:1.3em; margin-top:0.9em;" />
             }
         </div>
-        <div class="col-3 col-sm-3 col-md-6 d-flex justify-content-end">
-            <MudMenu @ref="menu" Icon="@Icons.Material.Rounded.MoreVert" Color="Color.Inherit">
+        <div class="col-3 d-flex justify-content-end m-0 p-0" style="max-width:3em;">
+            <MudMenu @ref="menu" Icon="@Icons.Material.Rounded.MoreVert" Color="Color.Inherit" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
                 <MudMenuItem AutoClose=false Style="height:3.5em; overflow-hidden" OnClick="@(() => pickerfondo.ToggleOpen())">
                     <div class="p-0 d-flex position-relative" style="height:3.5em; font-size: 0.9em;">
                         <span class="pt-4">Fondo</span>
@@ -116,10 +120,18 @@
                 {
                     <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="@(() => Bookmark = !Bookmark)" OnTouch="@(() => Bookmark = !Bookmark)">
                         <div class="p-0 pt-1 d-flex position-relative" style="height:3em; font-size: 0.9em; min-width:10em;">
-                            <span class="pt-3">Marcapáginas</span>
+                            <span class="pt-2 pb-1">Marcapáginas</span>
                             <MudIcon Icon="@(Bookmark ? Icons.Material.Rounded.Bookmark : Icons.Material.Rounded.BookmarkBorder)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
                         </div>
                     </MudMenuItem>
+                    @if (notesInNotebook > 1)
+                    {
+                        <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="OpenNotebook" OnTouch="OpenNotebook">
+                            <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
+                                <span class="pt-3">Libreta</span>
+                            </div>
+                        </MudMenuItem>
+                    }
                 }
                 <MudMenuItem OnClick="DeleteNote" OnTouch="DeleteNote">
                     <span style=" font-size: 0.9em;">Eliminar nota</span>
@@ -128,26 +140,23 @@
         </div>
     </div>
 
-    <RadzenHtmlEditor @bind-Value=@Content @onkeypress=@(() => saved = false) ShowToolbar="edicion" Disabled="!edicion" style="min-height:60vh; margin-top:2em;">
+    <RadzenHtmlEditor @bind-Value=@Content @onkeypress=@(() => saved = false) ShowToolbar="edicion" Disabled="!edicion" style="min-height:70vh; max-height:70vh; margin-top:1.5em;">
         <RadzenHtmlEditorUndo Title="Deshacer" Shortcut="Ctrl+Z" />
-        <RadzenHtmlEditorRedo Title="Rehacer" Shortcut="Ctrl+Y" />
-        <RadzenHtmlEditorSeparator />
+        @* <RadzenHtmlEditorRedo Title="Rehacer" Shortcut="Ctrl+Y" /> *@
+        @* <RadzenHtmlEditorSeparator /> *@
         <RadzenHtmlEditorBold Title="Negrita" Shortcut="Ctrl+B" />
         <RadzenHtmlEditorItalic Title="Cursiva" Shortcut="Ctrl+I" />
         <RadzenHtmlEditorUnderline Title="Subrayado" Shortcut="Ctrl+U" />
         <RadzenHtmlEditorStrikeThrough Title="Tachado" />
-        <RadzenHtmlEditorSeparator />
         <RadzenHtmlEditorAlignLeft Title="Alinear izquierda" />
         <RadzenHtmlEditorAlignCenter Title="Centrado" />
         <RadzenHtmlEditorAlignRight Title="Alinear derecha" />
         <RadzenHtmlEditorJustify Title="Justificado" />
-        <RadzenHtmlEditorSeparator />
         <RadzenHtmlEditorIndent Title="Aumentar sangría" />
         <RadzenHtmlEditorOutdent Title="Disminuir sangría" />
         <RadzenHtmlEditorOrderedList Title="Lista" />
-        <RadzenHtmlEditorSeparator />
-        <RadzenHtmlEditorFontName Title="Fuente" Placeholder="Fuente" />
-        <RadzenHtmlEditorFontSize Title="Tamaño" Placeholder="Tamaño" />
+        @* <RadzenHtmlEditorFontName Title="Fuente" Placeholder="Fuente" /> *@
+        @* <RadzenHtmlEditorFontSize Title="Tamaño" Placeholder="Tamaño" /> *@
         @if (!saved)
         {
             <MudIconButton Icon="@Icons.Material.Rounded.Save" Color="Color.Primary" Size="Size.Small" />
@@ -166,6 +175,7 @@
     private Note Note { get; set; }
     private bool edicion = true;
     private bool saved = true;
+    private int notesInNotebook { get; set; } = 0;
 
     private string Content
     {
@@ -233,12 +243,12 @@
     {
         get
         {
-            return _conn.GetNotebook(Note.Notebook).Bookmark == Note.Position;
+            return _conn.GetNotebook(Note.Notebook).Bookmark.Equals(Note.Id);
         }
         set
         {
             var notebook = _conn.GetNotebook(Note.Notebook);
-            notebook.Bookmark = Note.Position;
+            notebook.Bookmark = Note.Id;
             _conn.Conn.Update(notebook);
         }
     }
@@ -247,7 +257,6 @@
     protected async override Task OnInitializedAsync()
     {
         token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        await SynchronizationService.TrySyncLibrary(token);
         if (string.IsNullOrWhiteSpace(Id))
         {
             Note = new Note()
@@ -257,33 +266,13 @@
                     Created = DateTime.UtcNow,
                     Modified = DateTime.UtcNow,
                 };
-            if (!token.Equals("guest"))
-            {
-                try
-                {
-                    FirebaseClient client = new FirebaseClient(FirebasePath);
-                    var notefirebase = await client.Child("note").PostAsync(Note);
-                    var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
-                    Note.User = userId;
-                    Note.Id = notefirebase.Key;
-                    await client.Child("note").Child(notefirebase.Key).PutAsync(Note);
-                    client.Dispose();
-                }
-                catch
-                {
-                    var createQueue = new CreateQueue()
-                        {
-                            Id = Note.Id,
-                            Type = DocumentType.Note
-                        };
-                    _conn.Conn.Insert(createQueue);
-                }
-            }
-            _conn.Conn.Insert(Note);
+
+            await LibraryService.CreateNote(token, FirebasePath, Note);
             NavigationManager.NavigateTo($"/editnote/{Note.Id}");
         }
         else
         {
+            await SynchronizationService.TrySyncLibrary(token);
             Note = _conn.GetNote(Id);
         }
 
@@ -291,6 +280,20 @@
         {
             var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook));
             CanChangePage = notes.Count() > 1;
+        }
+        notesInNotebook = CountNotes();
+    }
+
+    private int CountNotes()
+    {
+        if (string.IsNullOrEmpty(Note.Notebook))
+        {
+            return 0;
+        }
+        else
+        {
+            var notebook = _conn.GetNotebook(Note.Notebook);
+            return _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id)).Count();
         }
     }
 
@@ -309,40 +312,12 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
-            var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook) && !x.Id.Equals(Note.Id)).OrderBy(x => x.Position).ToList();
-            var num = 0;
-            foreach (var notetoposition in notesinnotebook)
-            {
-                notetoposition.Position = num;
-                notetoposition.Modified = DateTime.UtcNow;
-                _conn.Conn.Update(notetoposition);
-                num++;
-            }
-
-            if (!token.Equals("guest"))
-            {
-                try
-                {
-                    FirebaseClient client = new FirebaseClient(FirebasePath);
-                    await client.Child("note").Child(Note.Id).DeleteAsync();
-                    client.Dispose();
-                }
-                catch
-                {
-                    DeleteQueue item = new DeleteQueue()
-                        {
-                            Id = Note.Id,
-                            Type = DocumentType.Notebook
-                        };
-                    _conn.GetConnection().Insert(item);
-                }
-            }
-            _conn.GetConnection().Delete(Note);
+            LibraryService.DeleteNote(token, FirebasePath, Note);
             NavigationManager.NavigateTo("library", true);
         }
     }
 
-    public async void ChangePage(bool previous)
+    private async void ChangePage(bool previous)
     {
         await SynchronizationService.TrySyncLibrary(token);
         var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook));
@@ -354,6 +329,22 @@
         Note = notes.Where(x => x.Position == nextPosition).First();
         Id = Note.Id;
         CanChangePage = notes.Count() > 1;
+        notesInNotebook = CountNotes();
         NavigationManager.NavigateTo($"/editnote/{Id}");
+    }
+
+    private async void OpenNotebook()
+    {
+        var parameters = new DialogParameters<EditNotebook>();
+        parameters.Add(x => x.Id, Note.Notebook);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        DialogService.Show<EditNotebook>("Libreta", parameters, options);
     }
 }

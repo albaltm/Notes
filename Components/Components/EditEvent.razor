@@ -1,0 +1,235 @@
+﻿@using AppNotes.Components.Components
+@using AppNotes.Components.Layout
+@using AppNotes.Components.Pages
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
+@inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject SynchronizationService SynchronizationService
+@inject EventService EventService
+@inherits Global
+
+<MudDialog @onkeypress="@Enter">
+    <DialogActions>
+        <div class="d-flex w-100">
+            <MudIconButton OnClick="() => SaveEvent()" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+        </div>
+    </DialogActions>
+    <DialogContent>
+        <div class="px-sm-5 overflow-visible">
+            @if (Event != null)
+            {
+                <MudForm @ref="form">
+                    <div class="p-0 mt-3 mb-5 d-flex">
+                        <span class="m-0 mt-4 me-1 me-sm-4">
+                            <IconPicker @bind-Icon="@Icon" />
+                        </span>
+                        <span style="width:100%;" class="ms-1 ms-sm-4"><MudTextField @bind-Value="Text" Required="true" RequiredError="Campo obligatorio" Immediate Placeholder="Título" Style="display:inline-block;" /></span>
+                    </div>
+
+                    <div class="d-flex">
+                        <MudCheckBox Size="Size.Small" @bind-Checked="AllDay" Label="Todo el día" Style="margin-top:1.5em; padding-right:3em;" Class="d-inline-block mx-auto" />
+                    </div>
+                    <div class="d-flex mb-3">
+                        <MudDatePicker Class="pe-2" @bind-Date="StartDate" Label="Inicio" Required="true" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog" />
+                        <MudDatePicker Class="ps-2" @bind-Date="EndDate" Label="Fin" Required="!AllDay" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog" Disabled="@AllDay" />
+                    </div>
+
+                    <div class="d-flex" style="margin-bottom:1.5em;">
+                        <MudTimePicker Class="pe-2" @bind-Time="StartHour" Required="endHour==null" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog" Disabled="@AllDay" />
+                        <MudTimePicker Class="ps-2" @bind-Time="EndHour" PickerVariant="PickerVariant.Dialog" Disabled="@AllDay" />
+                    </div>
+                </MudForm>
+            }
+        </div>
+
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public string? Id { get; set; }
+
+    MudForm form;
+    private List<Event> Events;
+
+    void Close() => MudDialog.Close();
+
+
+    private void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            SaveEvent();
+        }
+    }
+
+    private MudMenu menu;
+    private MudColorPicker pickericono;
+
+    private Event Event { get; set; }
+
+    private string Text
+    {
+        get { return Event.Text; }
+        set { Event.Text = value; }
+    }
+    private string Icon
+    {
+        get { return Event.Icon; }
+        set { Event.Icon = value; }
+    }
+    private DateTime? startDate { get; set; }
+    private DateTime? StartDate
+    {
+        get
+        {
+            return startDate;
+        }
+        set
+        {
+            startDate = value;
+            if (!AllDay) { endDate = value; }
+        }
+    }
+    private DateTime? endDate { get; set; }
+    private DateTime? EndDate
+    {
+        get
+        {
+            return endDate;
+        }
+        set
+        {
+            endDate = value;
+            if (StartDate == null || value < StartDate.Value) { StartDate = value; }
+        }
+    }
+    private TimeSpan? startHour { get; set; }
+    private TimeSpan? StartHour
+    {
+        get
+        {
+            return startHour;
+        }
+        set
+        {
+            startHour = value;
+            if (EndHour != null && value > EndHour && StartDate == EndDate)
+            {
+                EndHour = value;
+            }
+        }
+    }
+    private TimeSpan? endHour { get; set; }
+    private TimeSpan? EndHour
+    {
+        get
+        {
+            return endHour;
+        }
+        set
+        {
+            endHour = value;
+            if (StartHour == null || (value < StartHour.Value && StartDate == EndDate)) { StartHour = value; }
+        }
+    }
+    private bool allDay { get; set; } = false;
+    private bool AllDay
+    {
+        get { return allDay; }
+        set
+        {
+            allDay = value;
+            endDate = null;
+            startHour = null;
+            endHour = null;
+            form.ResetValidation();
+        }
+    }
+
+    private string token;
+
+    protected async override Task OnInitializedAsync()
+    {
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        await SynchronizationService.TrySyncEvents(token);
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            Event = new Event()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    User = token
+                };
+        }
+        else
+        {
+            Event = _conn.GetEvent(Id);
+            startDate = Event.Start.Date;
+            if (Event.Start.TimeOfDay != Event.Start.Date.TimeOfDay)
+            {
+                startHour = Event.Start.TimeOfDay;
+            }
+            if (Event.End == null)
+            {
+                allDay = true;
+            }
+            else
+            {
+                endDate = Event.End?.Date;
+                if (Event.End?.TimeOfDay == Event.End?.Date.AddDays(1).AddSeconds(-1).TimeOfDay)
+                {
+                    endHour = null;
+                }
+                else
+                {
+                    endHour = Event.End?.TimeOfDay;
+                }
+            }
+        }
+    }
+
+    private async Task SaveEvent()
+    {
+        await form.Validate();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        Event.Modified = DateTime.UtcNow;
+        if (AllDay)
+        {
+            Event.Start = StartDate.Value;
+            Event.End = null;
+        }
+        else
+        {
+            Event.Start = StartDate.Value + StartHour.Value;
+            Event.End = EndDate.Value;
+            if(EndHour != null)
+            {
+                Event.End = Event.End + EndHour.Value; ;
+            }
+            else
+            {
+                Event.End = Event.End.Value.AddDays(1).AddSeconds(-1);
+            }
+        }
+
+
+        if (Id == null)
+        {
+            Id = await EventService.CreateEvent(token, FirebasePath, Event);
+            NavigationManager.NavigateTo("/calendar", true);
+        }
+        else
+        {
+            _conn.GetConnection().Update(Event);
+            Close();
+        }
+    }
+}

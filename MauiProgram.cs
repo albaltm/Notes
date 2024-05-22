@@ -29,6 +29,8 @@ namespace AppNotes
             builder.Services.AddMudServices();
             builder.Services.AddSingleton<ConexionBBDD>();
             builder.Services.AddSingleton<SynchronizationService>();
+            builder.Services.AddSingleton<LibraryService>();
+            builder.Services.AddSingleton<EventService>();
 
             return builder.Build();
         }

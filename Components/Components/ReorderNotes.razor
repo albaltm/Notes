@@ -1,0 +1,93 @@
+﻿@inject IDialogService DialogService
+@inject ConexionBBDD _conn
+
+<style>
+    .mud-table-cell::before{display:none;}
+</style>
+
+<MudDialog>
+    <DialogActions>
+        <div class="d-flex w-100">
+            <MudIconButton OnClick="SaveOrder" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+        </div>
+    </DialogActions>
+    <DialogContent>
+         <div class="px-sm-3">
+            @if (Notes != null)
+            {
+                <MudDataGrid Items="@Notes" Style="border:1px solid grey;">
+                    <Columns>
+                        <TemplateColumn HeaderClass="d-none p-0 m-0" CellClass="p-0 py-3 m-0">
+                            <CellTemplate>
+                                <div class="row p-0 m-0" style="width:100%">
+                                    @* <MudIconButton Color="Color.Primary" Size="Size.Small" Icon="@Icons.Material.Rounded.KeyboardDoubleArrowUp" Class="d-inline-block " /> *@
+                                    <span class="d-inline-block col-2 p-0 text-center">
+                                        @if (context.Item.Position != 0)
+                                        {
+                                            <MudIconButton OnClick="() => PreviousPosition(context.Item)" Color="Color.Primary" Size="Size.Small" Icon="@Icons.Material.Rounded.KeyboardArrowUp" />
+                                        }
+                                    </span>
+                                    <span class="col-8 d-inline-block overflow-hidden pt-1">@context.Item.Name</span>
+                                    <span class="d-inline-block col-2 p-0 text-center">
+                                        @if (context.Item.Position != Notes.Count()-1)
+                                        {
+                                            <MudIconButton OnClick="() => NextPosition(context.Item)" Color="Color.Primary" Size="Size.Small" Icon="@Icons.Material.Rounded.KeyboardArrowDown" />
+                                        }
+                                    </span>
+                                    @* <MudIconButton Color="Color.Primary" Size="Size.Small" Icon="@Icons.Material.Rounded.KeyboardDoubleArrowDown" Class="d-inline-block" /> *@
+                                </div>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            }
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public string Id { get; set; }
+
+    RadzenDataGrid<Note> grid;
+    private List<Note> Notes { get; set; }
+
+    void Cancel() => MudDialog.Cancel();
+
+    protected async override void OnInitialized()
+    {
+        base.OnInitialized();
+        Notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Id)).OrderBy(x => x.Position).ToList();
+    }
+
+    private void PreviousPosition(Note note)
+    {
+        Notes.ElementAt(note.Position-1).Position = note.Position;
+        Notes.ElementAt(note.Position).Position = note.Position-1;
+
+        Notes = Notes.OrderBy(x => x.Position).ToList();
+    }
+
+    private void NextPosition(Note note)
+    {
+        Notes.ElementAt(note.Position + 1).Position = note.Position;
+        Notes.ElementAt(note.Position).Position = note.Position + 1;
+
+        Notes = Notes.OrderBy(x => x.Position).ToList();
+    }
+
+    private void SaveOrder()
+    {
+        foreach(var note in Notes)
+        {
+            var dbNote = _conn.GetNote(note.Id);
+            if (note.Position != dbNote.Position)
+            {
+                dbNote.Position = note.Position;
+                dbNote.Modified = DateTime.UtcNow;
+                _conn.Conn.Update(dbNote);
+            }
+        }
+        MudDialog.Close();
+    }
+}

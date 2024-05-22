@@ -3,43 +3,41 @@
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 
-<MudHidden Breakpoint="Breakpoint.SmAndUp" Invert>
-    <MudMenu class="position-fixed end-0 bottom-0 me-4 mb-4" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
-        <ActivatorContent>
-            <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
-        </ActivatorContent>
-        <ChildContent>
-            <MudMenuItem Href="/editnotebook">Libreta</MudMenuItem>
-            <MudMenuItem Href="/editnote">Nota</MudMenuItem>
-        </ChildContent>
-    </MudMenu>
-</MudHidden>
-<MudHidden Breakpoint="Breakpoint.SmAndUp">
-    <MudMenu class="position-fixed end-0 bottom-0 me-4" Style="margin-bottom: 4em;" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
-        <ActivatorContent>
-            <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
-        </ActivatorContent>
-        <ChildContent>
-            <MudMenuItem Href="/editnotebook">Libreta</MudMenuItem>
-            <MudMenuItem Href="/editnote">Nota</MudMenuItem>
-        </ChildContent>
-    </MudMenu>
-</MudHidden>
 
+<MudMenu class="position-fixed end-0 bottom-0 me-4 mb-4" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+    <ActivatorContent>
+        <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
+    </ActivatorContent>
+    <ChildContent>
+        <MudMenuItem OnClick="NewNotebook" OnTouch="NewNotebook" Style="min-width:12em;">Libreta<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.MenuBook" /></MudMenuItem>
+        <MudMenuItem Href="/editnote">Nota<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.StickyNote2" /></MudMenuItem>
+        <MudMenuItem OnClick="NewEvent" OnTouch="NewEvent">Evento<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.Today" /></MudMenuItem>
+    </ChildContent>
+</MudMenu>
 
 @code {
-    private async Task NewNote()
+    private async Task NewNotebook()
     {
-        // MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
-        //     {
-        //         DisableBackdropClick = true,
-        //         CloseOnEscapeKey = false,
-        //         CloseButton = true,
-        //         MaxWidth = MaxWidth.ExtraSmall,
-        //         FullWidth = true
-        //     };
-        // await DialogService.ShowAsync<CreateNote>("Nueva nota", options);
-        
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        DialogService.Show<EditNotebook>("Libreta", options);
     }
-
+    private async Task NewEvent()
+    {
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        DialogService.Show<EditEvent>("Evento", options);
+    }
 }

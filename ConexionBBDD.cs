@@ -16,10 +16,12 @@ public class ConexionBBDD
         Conn.CreateTable<Notebook>();
         Conn.CreateTable<CreateQueue>();
         Conn.CreateTable<DeleteQueue>();
+        Conn.CreateTable<Event>();
         //Conn.DeleteAll<Note>();
         //Conn.DeleteAll<Notebook>();
         //Conn.DeleteAll<CreateQueue>();
         //Conn.DeleteAll<DeleteQueue>();
+        //Conn.CreateTable<Event>();
     }
     public SQLiteConnection GetConnection()
     {
@@ -33,10 +35,11 @@ public class ConexionBBDD
 
     public void Vaciar()
     {
-        Conn.DropTable<Note>();
-        Conn.DropTable<Notebook>();
-        Conn.DropTable<CreateQueue>();
-        Conn.DropTable<DeleteQueue>();
+        Conn.DeleteAll<Note>();
+        Conn.DeleteAll<Notebook>();
+        Conn.DeleteAll<CreateQueue>();
+        Conn.DeleteAll<DeleteQueue>();
+        Conn.DeleteAll<Event>();
     }
 
     public Note GetNote(string id)
@@ -69,6 +72,21 @@ public class ConexionBBDD
             notebooks.Add(notebook);
         }
         return notebooks;
+    }
+    public Event GetEvent(string id)
+    {
+        var evento = Conn.CreateCommand($"select * from event WHERE id = '{id}'").ExecuteDeferredQuery<Event>().FirstOrDefault();
+        return evento;
+    }
+    public List<Event> GetEvents()
+    {
+        List<Event> events = new List<Event>();
+        var query = Conn.CreateCommand("select * from event").ExecuteDeferredQuery<Event>().ToList();
+        foreach (var evento in query)
+        {
+            events.Add(evento);
+        }
+        return events;
     }
 
     public List<CreateQueue> GetCreateQueue()

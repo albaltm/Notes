@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject ConexionBBDD _conn
 @inject SynchronizationService SynchronizationService
+@inject LibraryService LibraryService
 @inject IDialogService DialogService
 
 <style>
@@ -25,9 +26,26 @@
 @if(Notes != null) 
 {
     <div class="d-flex">
-        <MudFab StartIcon="@Icons.Material.Rounded.Add" OnClick="CreateNotebook" Color="Color.Default" Size="Size.Small" Style="cursor:pointer; min-width:3em; margin-right:1em;"/>
-        <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="px-2 pb-3">
-            @foreach (var notebook in Notebooks)
+        <div>
+            <MudMenu>
+                <ActivatorContent>
+                    <MudFab StartIcon="@Icons.Material.Rounded.FilterList" Color="Color.Default" Size="Size.Small" Style="cursor:pointer; min-width:3em;" />
+                </ActivatorContent>
+                <ChildContent>
+                    <MudMenuItem Class="py-1" AutoClose="false">
+                        <MudTextField T="string" Label="Búsqueda" @bind-Value="searchText" Immediate AdornmentIcon="@Icons.Material.Filled.Search"
+                                      AdornmentColor="Color.Primary" OnAdornmentClick="FilterByName" Adornment="Adornment.End" />
+                    </MudMenuItem>
+                    <MudMenuItem Class="py-1" OnClick="OrderByName" OnTouch="OrderByName">Nombre</MudMenuItem>
+                    <MudMenuItem Class="py-1" OnClick="OrderByCreation" OnTouch="OrderByCreation">Fecha creación</MudMenuItem>
+                    <MudMenuItem Class="py-1" OnClick="OrderByModification" OnTouch="OrderByModification">Fecha modificación</MudMenuItem>
+                    <MudMenuItem Class="py-1" OnClick="RestartFilter" OnTouch="RestartFilter">Reiniciar filtro</MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        </div>
+        
+        <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="px-2 pb-1 pb-2">
+            @foreach (var notebook in NotebooksFilter)
             {
                 <MudMenu ActivationEvent="@MouseEvent.RightClick">
                     <ActivatorContent>
@@ -41,39 +59,38 @@
                         }
                     </ActivatorContent>
                     <ChildContent>
-                        <MudMenuItem OnClick="() => EditNotebook(notebook)" OnTouch="() => EditNotebook(notebook)">Editar</MudMenuItem>
-                        <MudMenuItem OnClick="() => DeleteNotebook(notebook)" OnTouch="() => DeleteNotebook(notebook)">Eliminar</MudMenuItem>
+                        <MudMenuItem Class="py-1" OnClick="() => CheckFavorite(notebook)">Destacado <MudIcon Icon="@(notebook.Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Size="Size.Small"></MudIcon></MudMenuItem>
+                        <MudMenuItem Class="py-1" OnClick="() => EditNotebook(notebook)" OnTouch="() => EditNotebook(notebook)">Editar</MudMenuItem>
+                        <MudMenuItem Class="py-1" OnClick="() => DeleteNotebook(notebook)" OnTouch="() => DeleteNotebook(notebook)">Eliminar</MudMenuItem>
                     </ChildContent>
                 </MudMenu>
             }
         </MudStack>
     </div>
-        
-  
 
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 m-2 mt-4">
-        @foreach (var note in Notes)
+    <div class="row row-cols-1 row-cols-md-2 m-2 my-4">
+        @foreach (var note in NotesFilter)
         {
             <div class="px-2">
                 <MudMenu id="notemenu" ActivationEvent="@MouseEvent.RightClick" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
                      <ActivatorContent >
-                        <div class="col mb-3 py-3 py-md-4 py-lg-5 px-1 shadow" @onclick="() => AccessNote(note)"
-                             style="background-color:@note.BackgroundColor; border-radius:15px; cursor:pointer; border: 1px ridge #ababab;">
-                            <span style="color: @note.TextColor; height:1.4em;" class="overflow-hidden d-flex justify-content-between mx-auto">
+                        <div class="col mb-3 py-5 px-1 shadow" @onclick="() => AccessNote(note)"
+                             style="background-color:@note.BackgroundColor; border-radius:15px; cursor:pointer; border: 2px solid #ababab;">
+                            <span style="color: @note.TextColor; height:2em;" class="overflow-hidden d-flex justify-content-between mx-auto">
                                 <span style="color:@note.TextColor; width:3em;">
                                     @if (note.Favorite)
                                     {
                                         <MudIcon Icon="@Icons.Material.Rounded.StarOutline" Size="Size.Small" Class="ms-1" Style="width:0.7em;"></MudIcon>
                                     }
                                 </span>
-                                <span>@note.Name</span>
+                                <span class="pt-1">@note.Name</span>
                                 <span style="width:3em;"></span>
                             </span>
                         </div>
                     
                      </ActivatorContent>
                     <ChildContent>
-                        <MudMenuItem OnClick="() => DeleteNote(note)" OnTouch="() => DeleteNote(note)">Eliminar</MudMenuItem>
+                        <MudMenuItem Class="py-0" OnClick="() => DeleteNote(note)" OnTouch="() => DeleteNote(note)">Eliminar</MudMenuItem>
                     </ChildContent>
                 </MudMenu>
             </div>
@@ -87,15 +104,32 @@
 @code {
     private List<Note> Notes { get; set; }
     private List<Notebook> Notebooks { get; set; }
+    private List<Note> NotesFilter { get; set; }
+    private List<Notebook> NotebooksFilter { get; set; }
     string token;
+
+    string searchText = "";
 
     protected async override void OnInitialized()
     {
         token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        await SynchronizationService.TrySync(token);
 
+        Recargar(true);
+        await SynchronizationService.TrySync(token);
+        Recargar(true);
+    }
+
+    private void Recargar(bool resetFilter)
+    {
         Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
         Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+
+        if (resetFilter)
+        {
+            NotesFilter = Notes.ToList();
+            NotebooksFilter = Notebooks.ToList();
+        }
+
         StateHasChanged();
     }
 
@@ -104,33 +138,29 @@
         NavigationManager.NavigateTo($"/editnote/{note.Id}");
     }
 
-    public async void AccessNotebook(Notebook notebook)
+    public void AccessNotebook(Notebook notebook)
     {
         var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id));
         if (notes.Count() > 0)
         {
-            if (notebook.Bookmark != -1)
+            if (string.IsNullOrEmpty(notebook.Bookmark))
             {
-                NavigationManager.NavigateTo($"/editnote/{notes.Where(x => x.Position == notebook.Bookmark).First().Id}");
+                NavigationManager.NavigateTo($"/editnote/{notes.Where(x => x.Position == 0).First().Id}");
             }
             else
             {
-                NavigationManager.NavigateTo($"/editnote/{notes.Where(x => x.Position == 0).First().Id}");
+                NavigationManager.NavigateTo($"/editnote/{notes.Where(x => x.Id.Equals(notebook.Bookmark)).First().Id}");
             }
         }
     }
 
-    public void CreateNotebook()
+    private async void CheckFavorite(Notebook notebook)
     {
-        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
-            {
-                DisableBackdropClick = true,
-                CloseOnEscapeKey = false,
-                CloseButton = true,
-                MaxWidth = MaxWidth.ExtraSmall,
-                FullWidth = true
-            };
-        DialogService.Show<EditNotebook>("Libreta", options);
+        notebook.Favorite = !notebook.Favorite;
+        notebook.Modified = DateTime.UtcNow;
+        _conn.Conn.Update(notebook);
+        await SynchronizationService.TrySyncLibrary(token);
+        Recargar(false);
     }
 
     private void EditNotebook(Notebook notebook)
@@ -156,38 +186,11 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
-            var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id)).ToList();
-            foreach (var note in notes)
-            {
-                note.Modified = DateTime.UtcNow;
-                note.Notebook = "";
-                note.Position = -1;
-                _conn.GetConnection().Update(note);
-            }
+            LibraryService.DeleteNotebook(token, FirebasePath, notebook);
+            Recargar(false); 
+            NotebooksFilter.Remove(notebook);
 
-            if (!token.Equals("guest"))
-            {
-                try
-                {
-                    FirebaseClient client = new FirebaseClient(FirebasePath);
-                    await client.Child("notebook").Child(notebook.Id).DeleteAsync();
-                    client.Dispose();
-                }
-                catch
-                {
-                    DeleteQueue item = new DeleteQueue()
-                        {
-                            Id = notebook.Id,
-                            Type = DocumentType.Notebook
-                        };
-                    _conn.GetConnection().Insert(item);
-                }
-            }
-            _conn.GetConnection().Delete(notebook);
-            
             await SynchronizationService.TrySyncLibrary(token);
-            Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
-            Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
             StateHasChanged();
         }
     }
@@ -200,50 +203,44 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
-            var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id)).OrderBy(x => x.Position).ToList();
-            var num = 0;
-            foreach (var notetoposition in notesinnotebook)
-            {
-                notetoposition.Position = num;
-                notetoposition.Modified = DateTime.UtcNow;
-                _conn.Conn.Update(notetoposition);
-                num++;
-            }
+            LibraryService.DeleteNote(token, FirebasePath, note);
+            Recargar(false);
+            NotesFilter.Remove(note);
 
-            if (!string.IsNullOrEmpty(note.Notebook))
-            {
-                var notebook = _conn.GetNotebook(note.Notebook);
-                if (notebook.Bookmark == note.Position)
-                {
-                    notebook.Bookmark = -1;
-                    _conn.Conn.Update(notebook);
-                }
-            }
-
-            if (!token.Equals("guest"))
-            {
-                try
-                {
-                    FirebaseClient client = new FirebaseClient(FirebasePath);
-                    await client.Child("note").Child(note.Id).DeleteAsync();
-                    client.Dispose();
-                }
-                catch
-                {
-                    DeleteQueue item = new DeleteQueue()
-                        {
-                            Id = note.Id,
-                            Type = DocumentType.Notebook
-                        };
-                    _conn.GetConnection().Insert(item);
-                }
-            }
-            _conn.GetConnection().Delete(note);
-            
             await SynchronizationService.TrySyncLibrary(token);
-            Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
-            Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
             StateHasChanged();
         }
+    }
+
+    private void FilterByName()
+    {
+        NotesFilter = NotesFilter.Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToList();
+        NotebooksFilter = NotebooksFilter.Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToList();
+        searchText = "";
+        StateHasChanged();
+    }
+    private void OrderByName()
+    {
+        NotesFilter = Notes.OrderBy(x => x.Name).ToList();
+        NotebooksFilter = Notebooks.OrderBy(x => x.Name).ToList();
+        StateHasChanged();
+    }
+    private void OrderByCreation()
+    {
+        NotesFilter = Notes.OrderByDescending(x => x.Created).ToList();
+        NotebooksFilter = Notebooks.OrderByDescending(x => x.Created).ToList();
+        StateHasChanged();
+    }
+    private void OrderByModification()
+    {
+        NotesFilter = Notes.OrderByDescending(x => x.Modified).ToList();
+        NotebooksFilter = Notebooks.OrderByDescending(x => x.Modified).ToList();
+        StateHasChanged();
+    }
+    private void RestartFilter()
+    {
+        NotesFilter = Notes.ToList();
+        NotebooksFilter = Notebooks.ToList();
+        StateHasChanged();
     }
 }

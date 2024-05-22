@@ -16,15 +16,11 @@
         <MudLayout>
             <MudAppBar Elevation="1" Color="Color.Primary" Dense>
                 @* pantalla grande *@
-                <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert>
+                @* <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert> *@
                     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-                </MudHidden>
+                @* </MudHidden> *@
                 <MudSpacer />
-                @* @if (!SynchronizationService.Synchronized)
-                {
-                     <MudIcon Icon="@Icons.Material.Rounded.WifiOff" />
-                }
-                <MudSpacer /> *@
+                
                 @* comun *@
                 <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit" class="text-light">
                     <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
@@ -64,34 +60,34 @@
                         <MudText>Editar perfil</MudText>
                     </MudMenuItem>
                     <MudMenuItem OnTouch="CerrarSesion" OnClick="CerrarSesion">
-                        <MudText>Salir</MudText>
+                        <MudText>Salir</MudText> @* exittoapp icon*@
                     </MudMenuItem>
                 </MudMenu>
             </MudAppBar>
             <MudDrawer @bind-Open="@open" Elevation="1" ClipMode="DrawerClipMode.Always">
                 <MudNavMenu Rounded="true" Color="Color.Primary">
-                    <MudNavLink Match="NavLinkMatch.All" Href="/library" Class="mt-4"><MudIcon Icon="@Icons.Material.Rounded.Book" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Biblioteca</MudText></MudNavLink>
+                    <MudNavLink Match="NavLinkMatch.All" Href="/library" ForceLoad Class="mt-4"><MudIcon Icon="@Icons.Material.Rounded.Book" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Biblioteca</MudText></MudNavLink>
                     <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Tareas</MudText></MudNavLink>
                     <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Autorenew" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Hábitos</MudText></MudNavLink>
-                    <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Calendario</MudText></MudNavLink>
+                    <MudNavLink Match="NavLinkMatch.All" Href="/calendar"><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Calendario</MudText></MudNavLink>
                 </MudNavMenu>
             </MudDrawer>
             <MudMainContent>
                 <CascadingValue Value="this">
-                    <article class="content px-4">
+                    <article class="content px-4 pb-2">
                         @Body
                     </article>
                 </CascadingValue>
                 
             </MudMainContent>
-            <MudHidden Breakpoint="Breakpoint.SmAndUp">
+            @* <MudHidden Breakpoint="Breakpoint.SmAndUp">
                 <MudAppBar Bottom="true" Fixed="true" Color="@Color.Primary" Elevation="1" Dense>
                     <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Class="mx-auto text-light" /></MudLink>
                     <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Color="Color.Inherit" Class="mx-auto text-light" />
                     <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Inherit" Class="mx-auto text-light" />
                     <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Inherit" Class="mx-auto text-light" />
                 </MudAppBar>
-            </MudHidden>
+            </MudHidden> *@
         </MudLayout>
     </main>
 </div>
@@ -138,10 +134,8 @@
 
     protected override async void OnInitialized()
     {
-        // SynchronizationService.OnSynchronizationChanged += ActualizarIcono;
-
         var darkmode = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode");
-        if (darkmode == null)
+        if (string.IsNullOrEmpty(darkmode))
         {
             await JSRuntime.InvokeAsync<string>("localStorage.setItem", "darkmode", "system");
             darkModeSystem = "system";
@@ -151,21 +145,12 @@
             darkModeSystem = darkmode;
         }
         GetUserTheme();
-        if (DarkModeSystem.Equals("system"))
+        if (darkModeSystem.Equals("system"))
         {
             _isDarkMode = await _mudThemeProvider.GetSystemPreference();
         }
         await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
         TryAccessByToken();
-        StateHasChanged();
-    }
-
-    public void Dispose()
-    {
-        // SynchronizationService.OnSynchronizationChanged -= ActualizarIcono;
-    }
-    private void ActualizarIcono()
-    {
         StateHasChanged();
     }
 
@@ -197,6 +182,32 @@
         catch { }
         await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", "");
         NavigationManager.NavigateTo("/");
+    }
+
+    public async void CambioSystem()
+    {
+        _isDarkMode = await _mudThemeProvider.GetSystemPreference();
+        StateHasChanged();
+    }
+
+    private Task OnSystemPreferenceChanged(bool newValue)
+    {
+        if (darkModeSystem.Equals("system"))
+        {
+            _isDarkMode = newValue;
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    public async void SetDarkModePreference(string preference)
+    {
+        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "darkmode", preference);
+    }
+
+    public async void SetTheme(string color)
+    {
+        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "theme", color);
     }
 
     public async void GetUserTheme()
@@ -236,32 +247,6 @@
             userTheme = brownTheme;
         }
         StateHasChanged();
-    }
-
-    public async void CambioSystem()
-    {
-        _isDarkMode = await _mudThemeProvider.GetSystemPreference();
-        StateHasChanged();
-    }
-
-    private Task OnSystemPreferenceChanged(bool newValue)
-    {
-        if (DarkModeSystem.Equals("system"))
-        {
-            _isDarkMode = newValue;
-            StateHasChanged();
-        }
-        return Task.CompletedTask;
-    }
-
-    public async void SetDarkModePreference(string preference)
-    {
-        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "darkmode", preference);
-    }
-
-    public async void SetTheme(string color)
-    {
-        await JSRuntime.InvokeAsync<string>("localStorage.setItem", "theme", color);
     }
 
     MudTheme redTheme = new MudTheme()

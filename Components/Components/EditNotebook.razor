@@ -9,6 +9,7 @@
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 @inject SynchronizationService SynchronizationService
+@inject LibraryService LibraryService
 @inherits Global
 
 <style>
@@ -20,11 +21,11 @@
 <MudDialog @onkeypress="@Enter">
     <DialogActions>
         <div class="d-flex w-100">
-            <MudIconButton OnClick="SaveNotebook" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+            <MudIconButton OnClick="() => SaveNotebook(true)" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
         </div>
     </DialogActions>
     <DialogContent>
-        <div class="px-1 px-sm-5 pb-4">
+        <div class="px-sm-5 pb-4">
             @if (Notebook != null)
             {
                 <div class="p-0 d-flex">
@@ -37,12 +38,19 @@
 
                 @if (Notes.Count > 0)
                 {
-                    <MudSelect MultiSelectionTextFunc="@(new Func<List<string>, string>(GetMultiSelectionText))" Placeholder="Notas" T="Note" MultiSelection="true" @bind-SelectedValues="SelectedNotes">
-                        @foreach (Note note in Notes)
+                    <div class="d-flex">
+                        <MudSelect MultiSelectionTextFunc="@(new Func<List<string>, string>(GetMultiSelectionText))" Placeholder="Notas" T="Note" MultiSelection="true" @bind-SelectedValues="SelectedNotes">
+                            @foreach (Note note in Notes)
+                            {
+                                <MudSelectItem T="Note" Value="@note">@note.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        @if(SelectedNotes.Count() > 1)
                         {
-                            <MudSelectItem T="Note" Value="@note">@note.Name</MudSelectItem>
+                            <MudIconButton Icon="@Icons.Material.Rounded.Sort" Class="mt-3" OnClick="OpenReorder" />
                         }
-                    </MudSelect>
+                    </div>
                 }
             }
         </div>
@@ -64,7 +72,7 @@
     {
         if (e.Code == "Enter" || e.Code == "NumpadEnter")
         {
-            SaveNotebook();
+            SaveNotebook(false);
         }
     }
 
@@ -106,7 +114,7 @@
             Notebook.Favorite = value;
         }
     }
-    private int Bookmark
+    private string Bookmark
     {
         get
         {
@@ -119,6 +127,7 @@
     }
 
     private string token;
+    private bool exitPage = false;
 
     protected async override Task OnInitializedAsync()
     {
@@ -133,6 +142,7 @@
                     Created = DateTime.UtcNow,
                     Modified = DateTime.UtcNow,
                 };
+            exitPage = true;
         }
         else
         {
@@ -142,47 +152,15 @@
         SelectedNotes = Notes.ToList().Where(x => x.Notebook.Equals(Notebook.Id));
     }
 
-    private async void SaveNotebook()
+    private async Task SaveNotebook(bool reloadPage)
     {
         Notebook.Modified = DateTime.UtcNow;
-        if(Id == null)
+        if (Id == null)
         {
-            if (!token.Equals("guest"))
-            {
-                try
-                {
-                    FirebaseClient client = new FirebaseClient(FirebasePath);
-                    var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
-                    var notefirebase = await client.Child("notebook").PostAsync(Notebook);
-                    Notebook.Id = notefirebase.Key;
-                    Notebook.User = userId;
-                    await client.Child("notebook").Child(notefirebase.Key).PutAsync(Notebook);
-                    client.Dispose();
-                }
-                catch
-                {
-                    var createQueue = new CreateQueue()
-                        {
-                            Id = Notebook.Id,
-                            Type = DocumentType.Notebook
-                        };
-                    _conn.Conn.Insert(createQueue);
-                }
-            }
-            _conn.GetConnection().Insert(Notebook);
+            Id = await LibraryService.CreateNotebook(token, FirebasePath, Notebook);
         }
         else
         {
-            if (!token.Equals("guest"))
-            {
-                try
-                {
-                    FirebaseClient client = new FirebaseClient(FirebasePath);
-                    await client.Child("notebook").Child(Notebook.Id).PutAsync(Notebook);
-                    client.Dispose();
-                }
-                catch { }
-            }
             _conn.GetConnection().Update(Notebook);
         }
 
@@ -215,7 +193,14 @@
             _conn.GetConnection().Update(note);
         }
 
-        NavigationManager.NavigateTo("/library", true);
+        if (exitPage)
+        {
+            NavigationManager.NavigateTo("/library", true);
+        }
+        else if (reloadPage)
+        {
+            NavigationManager.Refresh(true);
+        }
     }
 
     private string GetMultiSelectionText(List<string> selectedValues)
@@ -225,5 +210,24 @@
             return null;
         }
         return $"{selectedValues.Count} {(selectedValues.Count > 1 ? "notas seleccionadas" : "nota seleccionada")}";
+    }
+    private async Task OpenReorder()
+    {
+        await SaveNotebook(false);
+        var name = _conn.GetNotebook(Notebook.Id).Name;
+        var parameters = new DialogParameters<ReorderNotes>();
+        parameters.Add(x => x.Id, Notebook.Id);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        var dialog = await DialogService.ShowAsync<ReorderNotes>(name, parameters, options);
+        await dialog.Result;
+        Notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Notebook.Id) || x.Notebook.Equals("")).OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+        SelectedNotes = Notes.ToList().Where(x => x.Notebook.Equals(Notebook.Id));
     }
 }

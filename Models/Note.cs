@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace AppNotes.Models
 {
     [Table("note")]
-    public class Note : IBiblioteca
+    public class Note
     {
         [PrimaryKey]
         [Column("id")]

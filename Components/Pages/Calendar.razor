@@ -1,0 +1,267 @@
+﻿@page "/calendar"
+@using AppNotes.Components.Components
+@using AppNotes.Services
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime;
+@inject ConexionBBDD _conn
+@inject SynchronizationService SynchronizationService
+@inject EventService EventService
+@inherits Global
+
+<style>
+    .caja{
+        padding: 0;
+        min-width: 9em;
+        margin-top: 1em;
+        border: 1px solid #a3a3a3;
+        border-radius: 10px;
+        cursor: pointer;
+        display:inline-block;
+    }
+    .caja:hover{
+        background-color: rgba(145, 145, 145, 0.2);
+    }
+    .caja p{
+        margin:0;
+    }
+
+    .mud-card:hover{
+        background-color: rgba(145, 145, 145, 0.2);
+    }
+</style>
+
+<div class="d-flex justify-content-between mb-5 pt-0" style="height:3em;">
+    <span class="d-inline-block">
+        <MudDatePicker @ref="datepicker" @bind-Date="PickerDate" DisableToolbar DisableUnderLine PickerVariant="PickerVariant.Dialog" AutoClose Color="Color.Primary" Style="max-width: 2em; max-height:0.1em;" Class="m-0 p-0">
+            <PickerActions>
+                <MudButton OnClick="() => SelectDate(DateTime.Today)">Hoy</MudButton>
+            </PickerActions>
+        </MudDatePicker>
+    </span>
+    <span class="d-inline-block">
+        <MudText Color="Color.Primary" Style="font-size:1.3em; font-weight:bold;" Class="pt-2 pe-4">@($"{SelectedDate.Day} {Months.ElementAt(SelectedDate.Month)}")</MudText>
+    </span>
+</div>
+
+<div class="row">
+    <div class="text-center d-flex p-0 m-0">
+        <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="PreviousWeek" Size="Size.Small" Style="width:1.5em; height:1.5em; margin:0; margin-top: 1em;" Class="me-1 me-2" />
+        <MudToggleGroup T="int" SelectedClass="mud-theme-primary" Class="p-0 w-100" @bind-Value="@WeekDay">
+            <MudToggleItem Value="1">
+                <div>
+                    <p class="p-0 m-0">L</p><p class="m-0 p-0">@(StartOfWeek.Date.Day.ToString())</p>
+                </div>
+            </MudToggleItem>
+            <MudToggleItem Value="2">
+                <div>
+                    <p class="p-0 m-0">M</p><p class="p-0 m-0">@(StartOfWeek.AddDays(1).Date.Day.ToString())</p>
+                </div>
+            </MudToggleItem>
+            <MudToggleItem Value="3">
+                <div>
+                    <p class="p-0 m-0">X</p><p class="p-0 m-0">@(StartOfWeek.AddDays(2).Date.Day.ToString())</p>
+                </div>
+            </MudToggleItem>
+            <MudToggleItem Value="4">
+                <div>
+                    <p class="p-0 m-0">J</p><p class="p-0 m-0">@(StartOfWeek.AddDays(3).Date.Day.ToString())</p>
+                </div>
+            </MudToggleItem>
+            <MudToggleItem Value="5">
+                <div>
+                    <p class="p-0 m-0">V</p><p class="p-0 m-0">@(StartOfWeek.AddDays(4).Date.Day.ToString())</p>
+                </div>
+            </MudToggleItem>
+            <MudToggleItem Value="6">
+                <div>
+                    <p class="p-0 m-0">S</p><p class="p-0 m-0">@(StartOfWeek.AddDays(5).Date.Day.ToString())</p>
+                </div>
+            </MudToggleItem>
+            <MudToggleItem Value="0">
+                <div>
+                    <p class="p-0 m-0">D</p><p class="p-0 m-0">@(StartOfWeek.AddDays(6).Date.Day.ToString())</p>
+                </div>
+            </MudToggleItem>
+        </MudToggleGroup>
+        <MudIconButton Icon="@Icons.Material.Rounded.ArrowForward" OnClick="NextWeek" Size="Size.Small" Style="width:1.5em; height:1.5em; margin:0; margin-top: 1em;" Class="ms-1 ms-2"></MudIconButton>
+    </div>
+</div>
+
+<div>
+    @if (TodayEvents?.Count > 0)
+    {
+        <MudTimeline TimelinePosition="TimelinePosition.Left" TimelineAlign="TimelineAlign.Default" Style="min-height: 60vh;" DisableModifiers>
+            @foreach (var evento in TodayEvents)
+            {
+                <MudTimelineItem TimelineAlign="TimelineAlign.End" Color="evento.Done ? Color.Default : Color.Primary" Variant="MudBlazor.Variant.Filled" Size="Size.Medium">
+                    <ItemDot>
+                        <MudIconButton Icon="@(GetToggledIcon(evento))" Size="Size.Medium" OnClick="() => ToggleEvent(evento)" />
+                    </ItemDot>
+                    <ItemContent>
+                        <MudMenu ActivationEvent="@MouseEvent.RightClick" Style="width:100%; padding-right:2em;" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                            <ActivatorContent>
+                                <MudCard Outlined Style="cursor:pointer; width:100%;" @onclick="() => OpenEvent(evento)">
+                                    <MudCardContent>
+                                        <span class="d-flex">
+                                            <span style="width:100%;">
+                                                <MudIcon Class="d-inline-block me-2 text-secondary" Icon="@evento.Icon" Size="Size.Small" />
+                                                <MudText Class="d-inline-block">@evento.Text</MudText>
+                                            </span>
+                                            <span class="p-0 m-0 pb-1">
+                                                @if (evento.Start == evento.Start.Date)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Rounded.AccessTime" Size="Size.Small" />
+                                                }
+                                                else
+                                                {
+                                                    @evento.Start.ToShortTimeString()
+                                                }
+                                            </span>
+                                        </span>
+                                    </MudCardContent>
+                                </MudCard>
+                            </ActivatorContent>
+                            <ChildContent>
+                                <MudMenuItem Class="py-1" OnClick="() => DeleteEvent(evento)" OnTouch="() => DeleteEvent(evento)">Eliminar</MudMenuItem>
+                            </ChildContent>
+                        </MudMenu>
+                    </ItemContent>
+                </MudTimelineItem>
+            }
+        </MudTimeline>
+    }
+</div>
+
+<CreateButton/>
+
+@code {
+
+    string token;
+
+    MudDatePicker datepicker;
+    private DateTime SelectedDate { get; set; }
+    private DateTime StartOfWeek { get; set; }
+    private int WeekDay
+    {
+        get { return (int)SelectedDate.DayOfWeek; }
+        set { 
+            if (value == 0)
+            {
+                SelectedDate = StartOfWeek.AddDays(6);
+            }
+            else
+            {
+                SelectedDate = StartOfWeek.AddDays(value - 1);
+            }
+        }
+    }
+    private DateTime? PickerDate
+    {
+        get { return SelectedDate; }
+        set
+        {
+            if (value.HasValue)
+            {
+                SelectDate(value.Value);
+            }
+        }
+    }
+
+    private List<Event> Events = new List<Event>();
+    private List<Event> TodayEvents { get; set; }
+    private List<Event> TodayDateEvents
+    {
+        get { return Events.Where(x => x.Start.Date == SelectedDate && x.End == null).ToList(); }
+    }
+    private List<Event> TodayHourEvents
+    {
+        get { return Events.Where(x => x.Start.Date == SelectedDate && x.End != null).ToList(); }
+    }
+
+    protected async override void OnInitialized()
+    {
+        base.OnInitialized();
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+
+        StartOfWeek = GetFirstDayOfWeek(DateTime.Today);
+        SelectedDate = DateTime.Today;
+        Recargar();
+        StateHasChanged();
+    }
+
+    private async void Recargar()
+    {
+        Events = _conn.GetEvents();
+        TodayEvents = Events.Where(x => x.Start.Date == SelectedDate.Date || (x.End != null && x.Start.Date < SelectedDate.Date && x.End.Value.Date >= SelectedDate.Date)).ToList();
+        StateHasChanged();
+        await SynchronizationService.TrySyncEvents(token);
+    }
+
+    private DateTime GetFirstDayOfWeek(DateTime day)
+    {
+        var diff = (int)day.DayOfWeek - 1;
+
+        if (diff < 0)
+            diff += 7;
+
+        return day.AddDays(-diff).Date;
+    }
+
+    private void SelectDate(DateTime date)
+    {
+        SelectedDate = date.Date;
+        StartOfWeek = GetFirstDayOfWeek(SelectedDate.Date);
+        datepicker.Close();
+        TodayEvents = Events.Where(x => x.Start.Date == SelectedDate.Date || (x.End != null && x.Start.Date < SelectedDate.Date && x.End.Value.Date >= SelectedDate.Date)).ToList();
+    }
+
+    private void PreviousWeek()
+    {
+        SelectDate(SelectedDate.AddDays(-7).Date);
+    }
+
+    private void NextWeek()
+    {
+        SelectDate(SelectedDate.AddDays(7).Date);
+    }
+
+    private async Task OpenEvent(Event evento)
+    {
+        var parameters = new DialogParameters<EditNotebook>();
+        parameters.Add(x => x.Id, evento.Id);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        var dialog = await DialogService.ShowAsync<EditEvent>("Evento", parameters, options);
+        await dialog.Result;
+        Recargar();
+    }
+
+    private string GetToggledIcon (Event evento)
+    {
+        if (evento.Done)
+        {
+            return Icons.Material.Rounded.Close;
+        }
+        return Icons.Material.Rounded.Check;
+    }
+
+    private void ToggleEvent(Event evento)
+    {
+        evento.Done = !evento.Done;
+        evento.Modified = DateTime.Now;
+        _conn.Conn.Update(evento);
+        Recargar();
+    }
+
+    private void DeleteEvent(Event evento)
+    {
+        EventService.DeleteEvent(token, FirebasePath, evento);
+    }
+
+}
