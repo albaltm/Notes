@@ -1,0 +1,122 @@
+﻿@page "/to-do"
+
+<div class="d-none d-md-flex">
+    <div class="row row-cols-1 row-cols-sm-3" style="width:95%; margin:auto;">
+        <div class="col px-2">
+            <div class="shadow overflow-hidden" style="border-radius:5px; background-color:rgba(139, 139, 139, 0.3);">
+                <div class="d-inline-block px-2 py-0" style="height:3em;">
+                    <div class="d-flex py-3">
+                        <MudIcon Icon="@Icons.Material.Rounded.Notes" Class="me-2 py-1" Size="Size.Small" />
+                        <MudText Class="d-inline-block">Sin empezar</MudText>
+                    </div>
+                </div>
+
+                <MudStack class="d-inline-block px-3 pb-1 overflow-auto" style="max-height:30em;">
+                    @foreach (var todo in ListToDo)
+                    {
+                        <div class="d-flex" style="height:4em; padding: 1em 0; border-radius:5px; background-color:rgba(209, 28, 121, 0.29)">
+                            <span class="px-3 w-100 d-flex justify-content-between">
+                                <span class="pt-1 overflow-hidden">hola sdkjfhsdkfbj dsfhyisdufhnew</span>
+                                <MudIconButton Icon="@Icons.Material.Rounded.Notes" Size="Size.Small"></MudIconButton>
+                            </span>
+                        </div>
+                    }
+                </MudStack>
+            </div>
+        </div>
+        <div class="col px-2" style="height:83vh;">
+            <div class="shadow overflow-hidden" style="border-radius:5px; height:100%; background-color:rgba(137, 164, 192, 0.3)">
+                <div class="d-inline-block px-2" style="height:10%;">
+                    <div class="d-flex py-3">
+                        <MudIcon Icon="@Icons.Material.Rounded.RotateLeft" Class="me-2 pt-1" Size="Size.Small" />
+                        <MudText Class="d-inline-block">En progreso</MudText>
+                    </div>
+                </div>
+
+                <MudStack class="d-inline-block pb-1 px-3 overflow-auto" style="height:90%;">
+                    @foreach (var todo in ListToDo)
+                    {
+                        <div class="d-flex" style="height:4em; padding: 1em 0; border-radius:5px; background-color:rgba(209, 28, 121, 0.29)">
+                            <span class="px-3 w-100 d-flex justify-content-between">
+                                <span class="pt-1 overflow-hidden">hola sdkjfhsdkfbj dsfhyisdufhnew</span>
+                                <MudIconButton Icon="@Icons.Material.Rounded.Notes" Size="Size.Small"></MudIconButton>
+                            </span>
+                        </div>
+                    }
+                </MudStack>
+            </div>
+        </div>
+        <div class="col px-2" style="height:83vh;">
+            <div class="shadow overflow-hidden" style="border-radius:5px; height:100%; background-color:rgba(137, 192, 174, 0.3)">
+                <div class="d-inline-block px-2" style="height:10%;">
+                    <div class="d-flex py-3">
+                        <MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 pt-1" Size="Size.Small" />
+                        <MudText Class="d-inline-block">Hecho</MudText>
+                    </div>
+                </div>
+
+                <MudStack class="d-inline-block pb-1 px-3 overflow-auto" style="height:90%;">
+                    @foreach (var todo in ListToDo)
+                    {
+                        <div class="d-flex" style="height:4em; padding: 1em 0; border-radius:5px; background-color:rgba(209, 28, 121, 0.29)">
+                            <span class="px-3 w-100 d-flex justify-content-between">
+                                <span class="pt-1 overflow-hidden">hola sdkjfhsdkfbj dsfhyisdufhnew</span>
+                                <MudIconButton Icon="@Icons.Material.Rounded.Notes" Size="Size.Small"></MudIconButton>
+                            </span>
+                        </div>
+                    }
+                </MudStack>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<p class="d-block d-md-none">hhhhhh</p>
+
+
+
+
+
+
+
+
+@code {
+    List<ToDoItem> ListToDo { get; set; } = new List<ToDoItem>();
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        var todo1 = new ToDoItem()
+            {
+                Text = "Salir a correr (ja)",
+            };
+        var todo2 = new ToDoItem()
+            {
+                Text = "Cita con mi novio imaginario que me compra flores",
+            };
+        var todo3 = new ToDoItem()
+            {
+                Text = "Ducharme que echo peste",
+            };
+        var todo4 = new ToDoItem()
+            {
+                Text = "Terminar esto ya",
+            };
+        ListToDo.Add(todo1);
+        ListToDo.Add(todo2);
+        ListToDo.Add(todo3);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+        ListToDo.Add(todo4);
+    }
+
+}

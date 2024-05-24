@@ -23,10 +23,6 @@ namespace AppNotes.Models
         public DateTime Created { get; set; }
         [Column("modified")]
         public DateTime Modified { get; set; }
-        //[Column("tags")]
-        //public List<string> Tags { get; set; }
-        [Column("favorite")]
-        public bool Favorite { get; set; } = false;
         [Column("bookmark")]
         public string Bookmark { get; set; } = "";
     }

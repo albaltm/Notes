@@ -17,11 +17,15 @@ public class ConexionBBDD
         Conn.CreateTable<CreateQueue>();
         Conn.CreateTable<DeleteQueue>();
         Conn.CreateTable<Event>();
+        Conn.CreateTable<ToDoItem>();
+        Conn.CreateTable<SubToDo>();
         //Conn.DeleteAll<Note>();
         //Conn.DeleteAll<Notebook>();
         //Conn.DeleteAll<CreateQueue>();
         //Conn.DeleteAll<DeleteQueue>();
-        //Conn.CreateTable<Event>();
+        //Conn.DeleteAll<Event>();
+        //Conn.DeleteAll<ToDoItem>();
+        //Conn.DeleteAll<SubToDo>();
     }
     public SQLiteConnection GetConnection()
     {
@@ -40,6 +44,8 @@ public class ConexionBBDD
         Conn.DeleteAll<CreateQueue>();
         Conn.DeleteAll<DeleteQueue>();
         Conn.DeleteAll<Event>();
+        Conn.DeleteAll<ToDoItem>();
+        Conn.DeleteAll<SubToDo>();
     }
 
     public Note GetNote(string id)
@@ -87,6 +93,37 @@ public class ConexionBBDD
             events.Add(evento);
         }
         return events;
+    }
+    public ToDoItem GetToDo(string id)
+    {
+        var toDo = Conn.CreateCommand($"select * from todoitem WHERE id = '{id}'").ExecuteDeferredQuery<ToDoItem>().FirstOrDefault();
+        return toDo;
+    }
+    public List<ToDoItem> GetToDos()
+    {
+        List<ToDoItem> toDos = new List<ToDoItem>();
+        var query = Conn.CreateCommand("select * from todoitem").ExecuteDeferredQuery<ToDoItem>().ToList();
+        foreach (var toDo in query)
+        {
+            toDos.Add(toDo);
+        }
+        return toDos;
+    }
+
+    public SubToDo GetSubToDo(string id)
+    {
+        var subToDo = Conn.CreateCommand($"select * from subtodo WHERE id = '{id}'").ExecuteDeferredQuery<SubToDo>().FirstOrDefault();
+        return subToDo;
+    }
+    public List<SubToDo> GetSubToDos()
+    {
+        List<SubToDo> subToDos = new List<SubToDo>();
+        var query = Conn.CreateCommand("select * from subtodo").ExecuteDeferredQuery<SubToDo>().ToList();
+        foreach (var subToDo in query)
+        {
+            subToDos.Add(subToDo);
+        }
+        return subToDos;
     }
 
     public List<CreateQueue> GetCreateQueue()

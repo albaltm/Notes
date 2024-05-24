@@ -67,15 +67,18 @@ namespace AppNotes.Services
             _conn.GetConnection().Insert(notebook);
             return notebook.Id;
         }
-        public async void DeleteNote(string token, string FirebasePath, Note note)
+        public async Task DeleteNote(string token, string FirebasePath, Note note)
         {
             var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id)).OrderBy(x => x.Position).ToList();
             var num = 0;
             foreach (var notetoposition in notesinnotebook)
             {
-                notetoposition.Position = num;
-                notetoposition.Modified = DateTime.UtcNow;
-                _conn.Conn.Update(notetoposition);
+                if (notetoposition.Position != num)
+                {
+                    notetoposition.Position = num;
+                    notetoposition.Modified = DateTime.UtcNow;
+                    _conn.Conn.Update(notetoposition);
+                }
                 num++;
             }
 
@@ -114,7 +117,7 @@ namespace AppNotes.Services
             }
             _conn.GetConnection().Delete(note);
         }
-        public async void DeleteNotebook(string token, string FirebasePath, Notebook notebook)
+        public async Task DeleteNotebook(string token, string FirebasePath, Notebook notebook)
         {
             var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id)).ToList();
             foreach (var note in notes)

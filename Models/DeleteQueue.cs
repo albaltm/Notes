@@ -22,5 +22,7 @@ namespace AppNotes.Models
         Note = 0,
         Notebook = 1,
         Event = 2,
+        Todo = 3,
+        SubToDo = 4,
     }
 }

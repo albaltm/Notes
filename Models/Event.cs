@@ -23,5 +23,7 @@ namespace AppNotes.Models
         public bool Done { get; set; } = false;
         [Column("modified")]
         public DateTime Modified { get; set; }
+
+        public bool AllDay => Start == Start.Date;
     }
 }

@@ -23,24 +23,21 @@
             @if (Event != null)
             {
                 <MudForm @ref="form">
-                    <div class="p-0 mt-3 mb-5 d-flex">
+                    <div class="p-0 mt-3 d-flex">
                         <span class="m-0 mt-4 me-1 me-sm-4">
                             <IconPicker @bind-Icon="@Icon" />
                         </span>
                         <span style="width:100%;" class="ms-1 ms-sm-4"><MudTextField @bind-Value="Text" Required="true" RequiredError="Campo obligatorio" Immediate Placeholder="Título" Style="display:inline-block;" /></span>
                     </div>
 
-                    <div class="d-flex">
-                        <MudCheckBox Size="Size.Small" @bind-Checked="AllDay" Label="Todo el día" Style="margin-top:1.5em; padding-right:3em;" Class="d-inline-block mx-auto" />
-                    </div>
-                    <div class="d-flex mb-3">
+                    <div class="d-flex mb-3" style="margin-top:2.5em;">
                         <MudDatePicker Class="pe-2" @bind-Date="StartDate" Label="Inicio" Required="true" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog" />
-                        <MudDatePicker Class="ps-2" @bind-Date="EndDate" Label="Fin" Required="!AllDay" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog" Disabled="@AllDay" />
+                        <MudDatePicker Class="ps-2" @bind-Date="EndDate" Label="Fin" PickerVariant="PickerVariant.Dialog" Clearable />
                     </div>
 
-                    <div class="d-flex" style="margin-bottom:1.5em;">
-                        <MudTimePicker Class="pe-2" @bind-Time="StartHour" Required="endHour==null" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog" Disabled="@AllDay" />
-                        <MudTimePicker Class="ps-2" @bind-Time="EndHour" PickerVariant="PickerVariant.Dialog" Disabled="@AllDay" />
+                    <div class="d-flex" style="margin-bottom:3em;">
+                        <MudTimePicker Class="pe-2" @bind-Time="StartHour" PickerVariant="PickerVariant.Dialog" Clearable="endHour == null" />
+                        <MudTimePicker Class="ps-2" @bind-Time="EndHour" PickerVariant="PickerVariant.Dialog" Clearable />
                     </div>
                 </MudForm>
             }
@@ -82,7 +79,7 @@
         get { return Event.Icon; }
         set { Event.Icon = value; }
     }
-    private DateTime? startDate { get; set; }
+    private DateTime startDate { get; set; } = DateTime.Today;
     private DateTime? StartDate
     {
         get
@@ -91,8 +88,10 @@
         }
         set
         {
-            startDate = value;
-            if (!AllDay) { endDate = value; }
+            if (value != null)
+            {
+                startDate = value.Value;
+            }
         }
     }
     private DateTime? endDate { get; set; }
@@ -105,7 +104,8 @@
         set
         {
             endDate = value;
-            if (StartDate == null || value < StartDate.Value) { StartDate = value; }
+            if (value < StartDate.Value) { StartDate = value; }
+            if (value == null && startHour > endHour) { EndHour = StartHour; }
         }
     }
     private TimeSpan? startHour { get; set; }
@@ -134,20 +134,7 @@
         set
         {
             endHour = value;
-            if (StartHour == null || (value < StartHour.Value && StartDate == EndDate)) { StartHour = value; }
-        }
-    }
-    private bool allDay { get; set; } = false;
-    private bool AllDay
-    {
-        get { return allDay; }
-        set
-        {
-            allDay = value;
-            endDate = null;
-            startHour = null;
-            endHour = null;
-            form.ResetValidation();
+            if ((value < StartHour.Value && ( EndDate == null || StartDate == EndDate))) { StartHour = value; }
         }
     }
 
@@ -173,18 +160,10 @@
             {
                 startHour = Event.Start.TimeOfDay;
             }
-            if (Event.End == null)
-            {
-                allDay = true;
-            }
-            else
+            if (Event.End?.Date != Event.Start.Date)
             {
                 endDate = Event.End?.Date;
-                if (Event.End?.TimeOfDay == Event.End?.Date.AddDays(1).AddSeconds(-1).TimeOfDay)
-                {
-                    endHour = null;
-                }
-                else
+                if (Event.End?.TimeOfDay != Event.End?.Date.AddDays(1).AddSeconds(-1).TimeOfDay)
                 {
                     endHour = Event.End?.TimeOfDay;
                 }
@@ -201,35 +180,45 @@
         }
 
         Event.Modified = DateTime.UtcNow;
-        if (AllDay)
+
+
+        Event.Start = startDate;
+        if (startHour != null)
         {
-            Event.Start = StartDate.Value;
-            Event.End = null;
+            Event.Start = Event.Start.Date + startHour.Value;
         }
-        else
+        if (endDate != null)
         {
-            Event.Start = StartDate.Value + StartHour.Value;
-            Event.End = EndDate.Value;
-            if(EndHour != null)
+            if (endHour != null)
             {
-                Event.End = Event.End + EndHour.Value; ;
+                Event.End = endDate.Value.Date + endHour.Value;
             }
             else
             {
-                Event.End = Event.End.Value.AddDays(1).AddSeconds(-1);
+                Event.End = endDate.Value.Date.AddDays(1).AddSeconds(-1);
             }
         }
-
+        else
+        {
+            if (endHour != null)
+            {
+                Event.End = startDate.Date + endHour.Value;
+            }
+            else
+            {
+                Event.End = startDate.AddDays(1).AddSeconds(-1);
+            }
+        }
+        
 
         if (Id == null)
         {
             Id = await EventService.CreateEvent(token, FirebasePath, Event);
-            NavigationManager.NavigateTo("/calendar", true);
         }
         else
         {
             _conn.GetConnection().Update(Event);
-            Close();
         }
+        NavigationManager.NavigateTo($"/calendar/{Id}", true);
     }
 }

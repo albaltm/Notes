@@ -39,7 +39,7 @@ namespace AppNotes.Services
             _conn.GetConnection().Insert(evento);
             return evento.Id;
         }
-        public async void DeleteEvent(string token, string FirebasePath, Event evento)
+        public async Task DeleteEvent(string token, string FirebasePath, Event evento)
         {
             if (!token.Equals("guest"))
             {
@@ -61,10 +61,10 @@ namespace AppNotes.Services
                         Id = evento.Id,
                         Type = DocumentType.Event
                     };
-                    _conn.GetConnection().Insert(item);
+                    _conn.Conn.Insert(item);
                 }
             }
-            _conn.GetConnection().Delete(evento);
+            _conn.Conn.Delete(evento);
         }
 
     }

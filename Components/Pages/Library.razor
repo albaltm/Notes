@@ -1,4 +1,5 @@
 ﻿@page "/library"
+@page "/library/{Id}"
 @using AppNotes.Components.Layout
 @using AppNotes.Components.Components
 @using AppNotes.Services
@@ -6,7 +7,7 @@
 @using Firebase.Database.Query
 @layout MainLayout
 @inherits Global
-@inject IJSRuntime JsRuntime;
+@inject IJSRuntime JsRuntime
 @inject NavigationManager NavigationManager
 @inject ConexionBBDD _conn
 @inject SynchronizationService SynchronizationService
@@ -40,59 +41,57 @@
                     <MudMenuItem Class="py-1" OnClick="OrderByCreation" OnTouch="OrderByCreation">Fecha creación</MudMenuItem>
                     <MudMenuItem Class="py-1" OnClick="OrderByModification" OnTouch="OrderByModification">Fecha modificación</MudMenuItem>
                     <MudMenuItem Class="py-1" OnClick="RestartFilter" OnTouch="RestartFilter">Reiniciar filtro</MudMenuItem>
+                    @if (Notebooks.Count() > 0)
+                    {
+                        <MudMenuItem Class="py-1" OnClick="ManageNotebooks" OnTouch="ManageNotebooks">Libretas</MudMenuItem>
+                    }
                 </ChildContent>
             </MudMenu>
         </div>
         
-        <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="px-2 pb-1 pb-2">
+        <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="px-2 pb-3">
             @foreach (var notebook in NotebooksFilter)
             {
-                <MudMenu ActivationEvent="@MouseEvent.RightClick">
-                    <ActivatorContent>
-                        @if (notebook.Favorite)
-                        {
-                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 shadow" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => AccessNotebook(notebook)" />
-                        }
-                        else
-                        {
-                            <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 mud-chip-transparency shadow" Text="@notebook.Name" Style="min-width:fit-content;" @onclick="() => AccessNotebook(notebook)" />
-                        }
-                    </ActivatorContent>
-                    <ChildContent>
-                        <MudMenuItem Class="py-1" OnClick="() => CheckFavorite(notebook)">Destacado <MudIcon Icon="@(notebook.Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.StarOutline)" Size="Size.Small"></MudIcon></MudMenuItem>
-                        <MudMenuItem Class="py-1" OnClick="() => EditNotebook(notebook)" OnTouch="() => EditNotebook(notebook)">Editar</MudMenuItem>
-                        <MudMenuItem Class="py-1" OnClick="() => DeleteNotebook(notebook)" OnTouch="() => DeleteNotebook(notebook)">Eliminar</MudMenuItem>
-                    </ChildContent>
-                </MudMenu>
+                var displayname = notebook.Name.Length > 15 ? $"{notebook.Name.Substring(0, 15)}..." : notebook.Name;
+                <MudChip Icon="@notebook.Icon" Color="Color.Primary" Class="mb-2 mud-chip-transparency shadow" Text="@displayname" Style="min-width:fit-content;" @onclick="() => AccessNotebook(notebook)" />
             }
         </MudStack>
     </div>
 
-    <div class="row row-cols-1 row-cols-md-2 m-2 my-4">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 mt-0 mb-4 px-2 px-sm-0">
         @foreach (var note in NotesFilter)
         {
             <div class="px-2">
-                <MudMenu id="notemenu" ActivationEvent="@MouseEvent.RightClick" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                     <ActivatorContent >
-                        <div class="col mb-3 py-5 px-1 shadow" @onclick="() => AccessNote(note)"
-                             style="background-color:@note.BackgroundColor; border-radius:15px; cursor:pointer; border: 2px solid #ababab;">
-                            <span style="color: @note.TextColor; height:2em;" class="overflow-hidden d-flex justify-content-between mx-auto">
-                                <span style="color:@note.TextColor; width:3em;">
-                                    @if (note.Favorite)
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Rounded.StarOutline" Size="Size.Small" Class="ms-1" Style="width:0.7em;"></MudIcon>
-                                    }
-                                </span>
-                                <span class="pt-1">@note.Name</span>
-                                <span style="width:3em;"></span>
-                            </span>
-                        </div>
-                    
-                     </ActivatorContent>
-                    <ChildContent>
-                        <MudMenuItem Class="py-0" OnClick="() => DeleteNote(note)" OnTouch="() => DeleteNote(note)">Eliminar</MudMenuItem>
-                    </ChildContent>
-                </MudMenu>
+                <div class="col mb-3 mb-md-5 px-1 shadow d-flex" @onclick="() => AccessNote(note)"
+                     style="background-color:@note.BackgroundColor; border-radius:4px; cursor:pointer; border: 1px solid rgba(139, 139, 139, 0.2); height:9vw; min-height:5em;">
+                    <span style="color:@note.TextColor; width:3em;" class="position-relative">
+                        <MudMenu>
+                            <ActivatorContent>
+                                <MudIconButton Class="position-absolute top-0 start-0" Icon="@(note.Favorite ? Icons.Material.Rounded.Star : Icons.Material.Rounded.MoreVert)" Style="width:0.8em; height:0.8em; margin-top:-0.2em;"></MudIconButton>
+                            </ActivatorContent>
+                            <ChildContent>
+                                <MudMenuItem Class="py-1" OnClick="() => CheckFavoriteNote(note)" OnTouch="() => CheckFavoriteNote(note)">@(note.Favorite ? "Quitar destacado" : "Destacar")</MudMenuItem>
+                                @if (string.IsNullOrEmpty(note.Notebook))
+                                {
+                                    <MudMenuItem Class="py-0" OnClick="() => AddToNotebook(note)" OnTouch="() => AddToNotebook(note)">Añadir a libreta</MudMenuItem>
+                                }
+                                else
+                                {
+                                    <MudMenuItem Class="py-0" OnClick="() => DeleteFromNotebook(note)" OnTouch="() => DeleteFromNotebook(note)">Quitar de libreta</MudMenuItem>
+                                }
+                                <MudMenuItem Class="py-0" OnClick="() => DeleteNote(note)" OnTouch="() => DeleteNote(note)">Eliminar</MudMenuItem>
+                            </ChildContent>
+                        </MudMenu>
+                    </span>
+                    <span style="color: @note.TextColor; height:100%; min-width: 9.5em;" class="overflow-hidden d-flex justify-content-between my-auto w-100">
+                        <span class="d-flex">
+                            <p class="d-inline-block my-auto mt-md-4 mt-xl-5 overflow-hidden text-break" style="max-height:3em; font-size:1.1em;">
+                                @note.Name
+                            </p>
+                        </span>
+                    </span>
+                    <span style="width:3em;"></span>
+                </div>
             </div>
         }
     </div>
@@ -102,6 +101,9 @@
 
 
 @code {
+    [Parameter]
+    public string? Id { get; set; }
+
     private List<Note> Notes { get; set; }
     private List<Notebook> Notebooks { get; set; }
     private List<Note> NotesFilter { get; set; }
@@ -115,14 +117,23 @@
         token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
 
         Recargar(true);
+
+        if (Id != null)
+        {
+            NotesFilter = Notes.Where(x => x.Notebook.Equals(Id)).ToList();
+            NotebooksFilter = Notebooks.Where(x => x.Id.Equals(Id)).ToList();
+            Id = null;
+            NavigationManager.NavigateTo("/library");
+        }
+
         await SynchronizationService.TrySync(token);
-        Recargar(true);
+        Recargar(false);
     }
 
     private void Recargar(bool resetFilter)
     {
         Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
-        Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+        Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Modified).ToList();
 
         if (resetFilter)
         {
@@ -154,11 +165,13 @@
         }
     }
 
-    private async void CheckFavorite(Notebook notebook)
+    private async void CheckFavoriteNote(Note note)
     {
-        notebook.Favorite = !notebook.Favorite;
-        notebook.Modified = DateTime.UtcNow;
-        _conn.Conn.Update(notebook);
+        note.Favorite = !note.Favorite;
+        note.Modified = DateTime.UtcNow;
+        _conn.Conn.Update(note);
+        NotesFilter = NotesFilter.OrderByDescending(x => x.Favorite).ToList();
+        Recargar(false);
         await SynchronizationService.TrySyncLibrary(token);
         Recargar(false);
     }
@@ -212,10 +225,53 @@
         }
     }
 
+    private async void AddToNotebook(Note note)
+    {
+        var parameters = new DialogParameters<ChooseNotebook>();
+        parameters.Add(x => x.Note, note.Id);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        var dialog = await DialogService.ShowAsync<ChooseNotebook>("Libretas", parameters, options);
+        await dialog.Result;
+        Recargar(true);
+    }
+
+    private void DeleteFromNotebook(Note note)
+    {
+        var notebook = _conn.GetNotebook(note.Notebook);
+        
+        var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id) && x.Position > note.Position).OrderBy(x => x.Position).ToList();
+        foreach (var notetoposition in notesinnotebook)
+        {
+            var position = notetoposition.Position -1;
+            notetoposition.Position = position;
+            notetoposition.Modified = DateTime.UtcNow;
+            _conn.Conn.Update(notetoposition);
+        }
+
+        if (notebook.Bookmark.Equals(note.Id))
+        {
+            notebook.Bookmark = "";
+        }
+
+        note.Notebook = "";
+        note.Position = -1;
+        notebook.Modified = DateTime.UtcNow;
+        note.Modified = DateTime.UtcNow;
+        _conn.Conn.Update(notebook);
+        _conn.Conn.Update(note);
+    }
+
     private void FilterByName()
     {
-        NotesFilter = NotesFilter.Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToList();
-        NotebooksFilter = NotebooksFilter.Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToList();
+        NotesFilter = Notes.Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToList();
+        NotebooksFilter = Notebooks.Where(x => x.Name.ToLower().Contains(searchText.ToLower())).ToList();
         searchText = "";
         StateHasChanged();
     }
@@ -239,8 +295,20 @@
     }
     private void RestartFilter()
     {
-        NotesFilter = Notes.ToList();
-        NotebooksFilter = Notebooks.ToList();
-        StateHasChanged();
+        Recargar(true);
+    }
+    private async void ManageNotebooks()
+    {
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        var dialog = await DialogService.ShowAsync<ManageNotebooks>("Libretas", options);
+        var result = await dialog.Result;
+        Recargar(true);
     }
 }

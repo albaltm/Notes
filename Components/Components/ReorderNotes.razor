@@ -49,7 +49,6 @@
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
     [Parameter] public string Id { get; set; }
 
-    RadzenDataGrid<Note> grid;
     private List<Note> Notes { get; set; }
 
     void Cancel() => MudDialog.Cancel();

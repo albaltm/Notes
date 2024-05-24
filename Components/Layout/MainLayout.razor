@@ -67,9 +67,9 @@
             <MudDrawer @bind-Open="@open" Elevation="1" ClipMode="DrawerClipMode.Always">
                 <MudNavMenu Rounded="true" Color="Color.Primary">
                     <MudNavLink Match="NavLinkMatch.All" Href="/library" ForceLoad Class="mt-4"><MudIcon Icon="@Icons.Material.Rounded.Book" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Biblioteca</MudText></MudNavLink>
-                    <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Tareas</MudText></MudNavLink>
-                    <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Autorenew" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Hábitos</MudText></MudNavLink>
-                    <MudNavLink Match="NavLinkMatch.All" Href="/calendar"><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Calendario</MudText></MudNavLink>
+                    <MudNavLink Match="NavLinkMatch.All" Href="/to-do" ForceLoad><MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Tareas</MudText></MudNavLink>
+                    <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Autorenew" Class="me-2 my-1 text-muted" /> <MudText Class="text-muted d-inline">Hábitos</MudText></MudNavLink>
+                    <MudNavLink Match="NavLinkMatch.All" Href="/calendar" ForceLoad><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Calendario</MudText></MudNavLink>
                 </MudNavMenu>
             </MudDrawer>
             <MudMainContent>
@@ -253,7 +253,7 @@
         {
             Palette = new PaletteLight()
             {
-                Primary = MudBlazor.Colors.Red.Lighten1
+                Primary = MudBlazor.Colors.Red.Lighten2
             },
             PaletteDark = new PaletteDark()
             {
@@ -275,7 +275,7 @@
         {
             Palette = new PaletteLight()
             {
-                Primary = MudBlazor.Colors.DeepPurple.Lighten2
+                Primary = MudBlazor.Colors.DeepPurple.Lighten3
             },
             PaletteDark = new PaletteDark()
             {
@@ -312,18 +312,18 @@
             },
             PaletteDark = new PaletteDark()
             {
-                Primary = MudBlazor.Colors.DeepOrange.Darken3
+                Primary = MudBlazor.Colors.DeepOrange.Darken4
             }
         };
     MudTheme brownTheme = new MudTheme()
         {
             Palette = new PaletteLight()
             {
-                Primary = MudBlazor.Colors.Brown.Lighten1
+                Primary = MudBlazor.Colors.Brown.Lighten2
             },
             PaletteDark = new PaletteDark()
             {
-                Primary = MudBlazor.Colors.Brown.Lighten1
+                Primary = MudBlazor.Colors.Brown.Darken1
             }
         };
 

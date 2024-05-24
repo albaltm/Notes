@@ -1,4 +1,6 @@
 ﻿
+using MudBlazor;
+
 namespace AppNotes.Models
 {
     public interface IEvent
@@ -10,5 +12,6 @@ namespace AppNotes.Models
         public string Text { get; set; }
         public bool Done { get; set; }
         public DateTime Modified { get; set; }
+        public string Icon { get; set; }
     }
 }
