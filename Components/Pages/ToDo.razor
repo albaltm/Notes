@@ -1,122 +1,381 @@
 ﻿@page "/to-do"
+@using AppNotes.Components.Components
+@using AppNotes.Services
+@inject ConexionBBDD _conn
+@inject SynchronizationService SynchronizationService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime;
+@inject IDialogService DialogService
 
-<div class="d-none d-md-flex">
-    <div class="row row-cols-1 row-cols-sm-3" style="width:95%; margin:auto;">
-        <div class="col px-2">
-            <div class="shadow overflow-hidden" style="border-radius:5px; background-color:rgba(139, 139, 139, 0.3);">
-                <div class="d-inline-block px-2 py-0" style="height:3em;">
-                    <div class="d-flex py-3">
-                        <MudIcon Icon="@Icons.Material.Rounded.Notes" Class="me-2 py-1" Size="Size.Small" />
-                        <MudText Class="d-inline-block">Sin empezar</MudText>
-                    </div>
-                </div>
-
-                <MudStack class="d-inline-block px-3 pb-1 overflow-auto" style="max-height:30em;">
-                    @foreach (var todo in ListToDo)
-                    {
-                        <div class="d-flex" style="height:4em; padding: 1em 0; border-radius:5px; background-color:rgba(209, 28, 121, 0.29)">
-                            <span class="px-3 w-100 d-flex justify-content-between">
-                                <span class="pt-1 overflow-hidden">hola sdkjfhsdkfbj dsfhyisdufhnew</span>
-                                <MudIconButton Icon="@Icons.Material.Rounded.Notes" Size="Size.Small"></MudIconButton>
-                            </span>
-                        </div>
-                    }
-                </MudStack>
-            </div>
-        </div>
-        <div class="col px-2" style="height:83vh;">
-            <div class="shadow overflow-hidden" style="border-radius:5px; height:100%; background-color:rgba(137, 164, 192, 0.3)">
-                <div class="d-inline-block px-2" style="height:10%;">
-                    <div class="d-flex py-3">
-                        <MudIcon Icon="@Icons.Material.Rounded.RotateLeft" Class="me-2 pt-1" Size="Size.Small" />
-                        <MudText Class="d-inline-block">En progreso</MudText>
-                    </div>
-                </div>
-
-                <MudStack class="d-inline-block pb-1 px-3 overflow-auto" style="height:90%;">
-                    @foreach (var todo in ListToDo)
-                    {
-                        <div class="d-flex" style="height:4em; padding: 1em 0; border-radius:5px; background-color:rgba(209, 28, 121, 0.29)">
-                            <span class="px-3 w-100 d-flex justify-content-between">
-                                <span class="pt-1 overflow-hidden">hola sdkjfhsdkfbj dsfhyisdufhnew</span>
-                                <MudIconButton Icon="@Icons.Material.Rounded.Notes" Size="Size.Small"></MudIconButton>
-                            </span>
-                        </div>
-                    }
-                </MudStack>
-            </div>
-        </div>
-        <div class="col px-2" style="height:83vh;">
-            <div class="shadow overflow-hidden" style="border-radius:5px; height:100%; background-color:rgba(137, 192, 174, 0.3)">
-                <div class="d-inline-block px-2" style="height:10%;">
-                    <div class="d-flex py-3">
-                        <MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 pt-1" Size="Size.Small" />
-                        <MudText Class="d-inline-block">Hecho</MudText>
-                    </div>
-                </div>
-
-                <MudStack class="d-inline-block pb-1 px-3 overflow-auto" style="height:90%;">
-                    @foreach (var todo in ListToDo)
-                    {
-                        <div class="d-flex" style="height:4em; padding: 1em 0; border-radius:5px; background-color:rgba(209, 28, 121, 0.29)">
-                            <span class="px-3 w-100 d-flex justify-content-between">
-                                <span class="pt-1 overflow-hidden">hola sdkjfhsdkfbj dsfhyisdufhnew</span>
-                                <MudIconButton Icon="@Icons.Material.Rounded.Notes" Size="Size.Small"></MudIconButton>
-                            </span>
-                        </div>
-                    }
-                </MudStack>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-<p class="d-block d-md-none">hhhhhh</p>
-
-
-
-
-
-
-
-
-@code {
-    List<ToDoItem> ListToDo { get; set; } = new List<ToDoItem>();
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        var todo1 = new ToDoItem()
-            {
-                Text = "Salir a correr (ja)",
-            };
-        var todo2 = new ToDoItem()
-            {
-                Text = "Cita con mi novio imaginario que me compra flores",
-            };
-        var todo3 = new ToDoItem()
-            {
-                Text = "Ducharme que echo peste",
-            };
-        var todo4 = new ToDoItem()
-            {
-                Text = "Terminar esto ya",
-            };
-        ListToDo.Add(todo1);
-        ListToDo.Add(todo2);
-        ListToDo.Add(todo3);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
-        ListToDo.Add(todo4);
+<style>
+    .expandable{
+        display:flex;
+        border-bottom: 2px solid rgba(123, 123, 123, 0.1);
+        border-radius: 4px 4px 0 0;
     }
 
+    .hoverclass:hover {
+        background-color: rgba(123, 123, 123, 0.1);
+        cursor: pointer;
+    }
+</style>
+
+<div class="d-flex mb-2">
+    <div>
+        <MudMenu>
+            <ActivatorContent>
+                <MudFab StartIcon="@Icons.Material.Rounded.MoreVert" Color="Color.Default" Size="Size.Small" Style="cursor:pointer; min-width:3em;" />
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem Class="py-1" AutoClose="false">
+                    <MudTextField T="string" Label="Búsqueda" @bind-Value="searchText" Immediate AdornmentIcon="@Icons.Material.Filled.Search"
+                                  AdornmentColor="Color.Primary" OnAdornmentClick="FilterByName" Adornment="Adornment.End" Clearable OnClearButtonClick="Recargar" />
+                </MudMenuItem>
+                <MudMenuItem Class="py-1" Href="/todosummary">Ver resumen</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </div>
+
+    <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="px-2 pb-3">
+
+    </MudStack>
+</div>
+<div class="mb-5 pb-5">
+    @if (PastToDo.Count > 0)
+    {
+        <div class="justify-content-between expandable hoverclass p-2" @onclick="@(() => pastExpanded = !pastExpanded)">
+            <MudText Class="flex-grow-1">Pasadas</MudText>
+            <MudText Style="font-size:1em; padding-top:0.2em; padding-right: 0.4em;">@PastToDo.Count</MudText>
+            <MudIcon Icon="@(pastExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" />
+        </div>
+        <MudCollapse Expanded="pastExpanded" Class="mb-4">
+            @foreach (var todo in PastToDo)
+            {
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                    <div class="my-auto">
+                        <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
+                    </div>
+                    <div class="w-100">
+                        <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;" class="m-0">@todo.Text</p>
+                        <p class="m-0">@todo.Start.ToShortDateString() @if(todo.Start.TimeOfDay != todo.Start.Date.TimeOfDay){<span>   -   @todo.Start.ToShortTimeString()</span>}</p>
+                    </div>
+                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    {
+                        <span class="m-0 mx-3 my-auto p-0">
+                            <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
+                        </span>
+                    }
+                    <MudMenu ActivationEvent="MouseEvent.RightClick">
+                        <ActivatorContent>
+                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 mx-2 p-0" Color="todo.Status == Status.InProgress ? Color.Primary:Color.Default" />
+                        </ActivatorContent>
+                        <ChildContent>
+                            @if (todo.Status != Status.ToDo)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.ToDo)" OnTouch="() => ToggleDone(todo, Status.ToDo)">Marcar por hacer</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.InProgress)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.InProgress)" OnTouch="() => ToggleDone(todo, Status.InProgress)">Marcar en progreso</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.Done)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.Done)" OnTouch="() => ToggleDone(todo, Status.Done)">Marcar hecho</MudMenuItem>
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                </MudPaper>
+            }
+        </MudCollapse>
+    }
+
+    @if (TodayToDo.Count > 0)
+    {
+        <div class="justify-content-between expandable hoverclass p-2" @onclick="@(() => todayExpanded = !todayExpanded)">
+            <MudText Class="flex-grow-1">Hoy</MudText>
+            <MudText Style="font-size:1em; padding-top:0.2em; padding-right: 0.4em;">@TodayToDo.Count</MudText>
+            <MudIcon Icon="@(todayExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" />
+        </div>
+        <MudCollapse Expanded="todayExpanded" Class="mb-4">
+            @foreach (var todo in TodayToDo)
+            {
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                    <div class="my-auto">
+                        <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
+                    </div>
+                    @if (todo.Start.TimeOfDay != todo.Start.Date.TimeOfDay)
+                    {
+                        <div class="w-100">
+                            <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;" class="m-0">@todo.Text</p>
+                            <p class="m-0">@todo.Start.ToShortTimeString()</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="w-100 my-auto">
+                            <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp: 2; word-wrap:anywhere;" class="m-0 w-100">@todo.Text</p>
+                        </div>
+                    }
+                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    {
+                        <span class="m-0 mx-3 my-auto p-0">
+                            <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
+                        </span>
+                    }
+                    <MudMenu ActivationEvent="MouseEvent.RightClick">
+                        <ActivatorContent>
+                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" Color="todo.Status == Status.InProgress ? Color.Primary:Color.Default" />
+                        </ActivatorContent>
+                        <ChildContent>
+                            @if (todo.Status != Status.ToDo)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.ToDo)" OnTouch="() => ToggleDone(todo, Status.ToDo)">Marcar por hacer</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.InProgress)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.InProgress)" OnTouch="() => ToggleDone(todo, Status.InProgress)">Marcar en progreso</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.Done)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.Done)" OnTouch="() => ToggleDone(todo, Status.Done)">Marcar hecho</MudMenuItem>
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                </MudPaper>
+            }
+        </MudCollapse>
+
+    }
+
+    @if (FutureToDo.Count > 0)
+    {
+        <div class="justify-content-between expandable hoverclass p-2" @onclick="@(() => futureExpanded = !futureExpanded)">
+            <MudText Class="flex-grow-1">Futuras</MudText>
+            @if (futureExpanded)
+            {
+                <MudMenu Class="p-0 m-0">
+                    <ActivatorContent>
+                        <MudIconButton Icon="@Icons.Material.Rounded.FilterAlt" Size="Size.Small" Class="p-0 me-4" />
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem OnClick="() => FilterFuture(1)" OnTouch="() => FilterFuture(1)">Mañana</MudMenuItem>
+                        <MudMenuItem OnClick="() => FilterFuture(2)" OnTouch="() => FilterFuture(2)">Esta semana</MudMenuItem>
+                        <MudMenuItem OnClick="() => FilterFuture(3)" OnTouch="() => FilterFuture(3)">Este mes</MudMenuItem>
+                        <MudMenuItem OnClick="() => FilterFuture(0)" OnTouch="() => FilterFuture(0)">Todas</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            }
+            <MudText Style="font-size:1em; padding-top:0.2em; padding-right: 0.4em;">@FutureToDo.Count</MudText>
+            <MudIcon Icon="@(futureExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" />
+        </div>
+
+        <MudCollapse Expanded="futureExpanded" Class="mb-4">
+            @foreach (var todo in FutureFilter)
+            {
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                    <div class="my-auto">
+                        <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
+                    </div>
+                    <div class="w-100">
+                        <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;" class="m-0">@todo.Text</p>
+                        <p class="m-0">@todo.Start.ToShortDateString() @if(todo.Start.TimeOfDay != todo.Start.Date.TimeOfDay){<span>   -   @todo.Start.ToShortTimeString()</span>}</p>
+                    </div>
+                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    {
+                        <span class="m-0 mx-3 my-auto p-0">
+                            <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
+                        </span>
+                    }
+                    <MudMenu ActivationEvent="MouseEvent.RightClick">
+                        <ActivatorContent>
+                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" Color="todo.Status == Status.InProgress ? Color.Primary:Color.Default" />
+                        </ActivatorContent>
+                        <ChildContent>
+                            @if (todo.Status != Status.ToDo)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.ToDo)" OnTouch="() => ToggleDone(todo, Status.ToDo)">Marcar por hacer</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.InProgress)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.InProgress)" OnTouch="() => ToggleDone(todo, Status.InProgress)">Marcar en progreso</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.Done)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.Done)" OnTouch="() => ToggleDone(todo, Status.Done)">Marcar hecho</MudMenuItem>
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                </MudPaper>
+            }
+        </MudCollapse>
+    }
+
+    @if (CompletedToday.Count > 0)
+    {
+        <div class="justify-content-between expandable hoverclass p-2" @onclick="@(() => completedExpanded = !completedExpanded)">
+            <MudText Class="flex-grow-1">Completado hoy</MudText>
+            <MudText Style="font-size:1em; padding-top:0.2em; padding-right: 0.4em;">@CompletedToday.Count</MudText>
+            <MudIcon Icon="@(completedExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" />
+        </div>
+        <MudCollapse Expanded="completedExpanded" Class="mb-3">
+            @foreach (var todo in CompletedToday)
+            {
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                    <div class="my-auto">
+                        <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
+                    </div>
+                    <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; word-wrap:anywhere;" class="m-0 w-100">@todo.Text</p>
+                    <MudMenu ActivationEvent="MouseEvent.RightClick">
+                        <ActivatorContent>
+                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" />
+                        </ActivatorContent>
+                        <ChildContent>
+                            @if (todo.Status != Status.ToDo)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.ToDo)" OnTouch="() => ToggleDone(todo, Status.ToDo)">Marcar por hacer</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.InProgress)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.InProgress)" OnTouch="() => ToggleDone(todo, Status.InProgress)">Marcar en progreso</MudMenuItem>
+                            }
+                            @if (todo.Status != Status.Done)
+                            {
+                                <MudMenuItem OnClick="() => ToggleDone(todo, Status.Done)" OnTouch="() => ToggleDone(todo, Status.Done)">Marcar hecho</MudMenuItem>
+                            }
+                        </ChildContent>
+                    </MudMenu>
+                </MudPaper>
+            }
+        </MudCollapse>
+    }
+</div>
+<CreateButton />
+
+@code {
+    string token;
+
+    List<ToDoItem> ListToDo { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> PastToDo { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> TodayToDo { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> FutureToDo { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> FutureFilter { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> CompletedToday { get; set; } = new List<ToDoItem>();
+
+    string searchText { get; set; } = "";
+
+    protected override async void OnInitialized()
+    {
+        base.OnInitialized();
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        ListToDo = _conn.GetToDos();
+        Recargar();
+        StateHasChanged();
+        await SynchronizationService.TrySyncToDo(token);
+        Recargar();
+        StateHasChanged();
+    }
+
+    bool pastExpanded = false;
+    bool todayExpanded = true;
+    bool futureExpanded = false;
+    bool completedExpanded = false;
+
+    private void Recargar()
+    {
+        PastToDo = ListToDo.Where(x => x.End != null && x.End < DateTime.Now && x.Status != Status.Done && x.Repeat).OrderByDescending(x => x.Priority).ToList();
+        var todayFixedHour = ListToDo.Where(x => (x.Start.Date <= DateTime.Today && (x.End == null || x.End.Value >= DateTime.Now)) && x.Status != Status.Done && x.Start.TimeOfDay != x.Start.Date.TimeOfDay).OrderBy(x => x.Start.TimeOfDay).ThenByDescending(x => x.Priority).ToList();
+        var todayAllDay = ListToDo.Where(x => (x.Start.Date <= DateTime.Today && (x.End == null || x.End.Value >= DateTime.Now)) && x.Status != Status.Done && x.Start.TimeOfDay == x.Start.Date.TimeOfDay).OrderByDescending(x => x.Priority).ToList();
+        todayFixedHour.AddRange(todayAllDay);
+        TodayToDo = todayFixedHour.ToList();
+        FutureToDo = ListToDo.Where(x => x.Start.Date >= DateTime.Today.AddDays(1) && x.Status != Status.Done).OrderBy(x => x.Start).ThenByDescending(x => x.Priority).ToList();
+        CompletedToday = ListToDo.Where(x => x.CompletedAt?.Date == DateTime.Today).OrderByDescending(x => x.CompletedAt).ToList();
+        FilterFuture(0);
+    }
+
+    private void ToggleDone (ToDoItem todo, Status? status)
+    {
+        todo.Modified = DateTime.UtcNow;
+        if (todo.Status == Status.Done) { todo.CompletedAt = null; }
+        if (status == null)
+        {
+            if (todo.Done) { todo.Status = Status.ToDo; }
+            else
+            {
+                todo.Status = Status.Done;
+                todo.CompletedAt = DateTime.Now;
+                completedExpanded = true;
+                // var subtodos = _conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id));
+                // foreach (var subtodo in subtodos)
+                // {
+                //     subtodo.Status = Status.Done;
+                //     subtodo.Modified = DateTime.UtcNow;
+                //     _conn.Conn.Update(subtodo);
+                // }
+            }
+        }
+        else
+        {
+            todo.Status = status.Value;
+            if (status == Status.Done)
+            {
+                completedExpanded = true;
+                todo.CompletedAt = DateTime.Now;
+            }
+        }
+        _conn.Conn.Update(todo);
+        Recargar();
+    }
+
+    private void FilterFuture(int option)
+    {
+        if (option == 0) //all
+        {
+            FutureFilter = FutureToDo.ToList();
+        }
+        else if (option == 1) //tomorrow
+        {
+            FutureFilter = FutureToDo.Where(x => x.Start < DateTime.Today.AddDays(2)).ToList();
+        }
+        else if (option == 2) //this week
+        {
+            var diff = (int)DateTime.Today.DayOfWeek - 1;
+            if (diff < 0) { diff += 7; }
+            var sunday = DateTime.Today.AddDays(-diff).Date.AddDays(6);
+            FutureFilter = FutureToDo.Where(x => x.Start < sunday.AddDays(1)).ToList();
+        }
+        else if (option == 3) //this month
+        {
+            DateTime lastDayMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(1).AddDays(-1);
+            FutureFilter = FutureToDo.Where(x => x.Start < lastDayMonth.AddDays(1)).ToList();
+        }
+    }
+
+    private async void OpenToDo(ToDoItem todo)
+    {
+        NavigationManager.NavigateTo($"/edittodo/{todo.Id}");
+    }
+
+    private async void ViewSubTodos(ToDoItem todo)
+    {
+        var parameters = new DialogParameters<ViewSubTodos>();
+        parameters.Add(x => x.ToDo, todo.Id);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        await DialogService.ShowAsync<ViewSubTodos>("Subtareas", parameters, options);
+    }
+
+    private void FilterByName()
+    {
+        if (string.IsNullOrWhiteSpace(searchText)) { searchText = ""; return; }
+        Recargar();
+        PastToDo = PastToDo.Where(x => x.Text.ToLower().Contains(searchText.ToLower())).ToList();
+        TodayToDo = TodayToDo.Where(x => x.Text.ToLower().Contains(searchText.ToLower())).ToList();
+        FutureToDo = FutureToDo.Where(x => x.Text.ToLower().Contains(searchText.ToLower())).ToList();
+        CompletedToday = CompletedToday.Where(x => x.Text.ToLower().Contains(searchText.ToLower())).ToList();
+    }
 }

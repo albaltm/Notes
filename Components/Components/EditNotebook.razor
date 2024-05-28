@@ -21,7 +21,7 @@
 <MudDialog @onkeypress="@Enter">
     <DialogActions>
         <div class="d-flex w-100">
-            <MudIconButton OnClick="() => SaveNotebook(true)" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+            <MudIconButton OnClick="() => SaveNotebook()" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
         </div>
     </DialogActions>
     <DialogContent>
@@ -42,7 +42,9 @@
                         <MudSelect MultiSelectionTextFunc="@(new Func<List<string>, string>(GetMultiSelectionText))" Placeholder="Notas" T="Note" MultiSelection="true" @bind-SelectedValues="SelectedNotes">
                             @foreach (Note note in Notes)
                             {
-                                <MudSelectItem T="Note" Value="@note">@note.Name</MudSelectItem>
+                                <MudSelectItem T="Note" Value="@note">
+                                    <div style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap; margin-left:-1em; font-size:0.9em;">@note.Name</div>
+                                </MudSelectItem>
                             }
                         </MudSelect>
 
@@ -72,12 +74,11 @@
     {
         if (e.Code == "Enter" || e.Code == "NumpadEnter")
         {
-            SaveNotebook(false);
+            SaveNotebook();
         }
     }
 
     private MudMenu menu;
-    private MudColorPicker pickericono;
 
     private Notebook Notebook { get; set; }
 
@@ -141,7 +142,7 @@
         SelectedNotes = Notes.ToList().Where(x => x.Notebook.Equals(Notebook.Id));
     }
 
-    private async Task SaveNotebook(bool reloadPage)
+    private async Task SaveNotebook()
     {
         Notebook.Modified = DateTime.UtcNow;
         if (Id == null)
@@ -182,15 +183,8 @@
             _conn.GetConnection().Update(note);
         }
 
-        if (exitPage)
-        {
-            NavigationManager.NavigateTo("/library", true);
-        }
-        else if (reloadPage)
-        {
-            // NavigationManager.Refresh(true);
-            Close();
-        }
+        SynchronizationService.TrySyncLibrary(token);
+        Close();
     }
 
     private string GetMultiSelectionText(List<string> selectedValues)
@@ -203,8 +197,7 @@
     }
     private async Task OpenReorder()
     {
-        await SaveNotebook(false);
-        var name = _conn.GetNotebook(Notebook.Id).Name;
+        await SaveNotebook();
         var parameters = new DialogParameters<ReorderNotes>();
         parameters.Add(x => x.Id, Notebook.Id);
         MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
@@ -215,7 +208,7 @@
                 MaxWidth = MaxWidth.ExtraSmall,
                 FullWidth = true
             };
-        var dialog = await DialogService.ShowAsync<ReorderNotes>(name, parameters, options);
+        var dialog = await DialogService.ShowAsync<ReorderNotes>("Libreta", parameters, options);
         await dialog.Result;
         Notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Notebook.Id) || x.Notebook.Equals("")).OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
         SelectedNotes = Notes.ToList().Where(x => x.Notebook.Equals(Notebook.Id));

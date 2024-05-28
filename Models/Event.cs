@@ -14,13 +14,15 @@ namespace AppNotes.Models
         [Column("start")]
         public DateTime Start { get; set; } = DateTime.Today;
         [Column("end")]
-        public DateTime? End { get; set; }
+        public DateTime? End { get; set; } = DateTime.Today.AddDays(1).AddSeconds(-1);
         [Column("text")]
         public string Text { get; set; } = "";
+        [Column("color")]
+        public string Color { get; set; } = "inherit";
         [Column("icon")]
         public string Icon { get; set; } = @Icons.Material.Rounded.Lightbulb;
-        [Column("done")]
-        public bool Done { get; set; } = false;
+        [Column("status")]
+        public Status Status { get; set; } = 0;
         [Column("modified")]
         public DateTime Modified { get; set; }
 

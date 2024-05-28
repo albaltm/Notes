@@ -1,0 +1,89 @@
+﻿@using AppNotes.Components.Pages
+@using AppNotes.Services
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime;
+@inject LibraryService LibraryService
+@inject SynchronizationService SynchronizationService
+@inject NavigationManager NavigationManager
+@inject ConexionBBDD _conn
+@inherits Global
+
+<style>
+    .mud-table-cell::before {
+        display: none;
+    }
+</style>
+
+<MudDialog>
+    <DialogContent>
+        <div class="px-sm-5 pb-4">
+            @if (SubTodos != null)
+            {
+                <MudDataGrid Items="@SubTodos" Style="border:1px solid grey;">
+                    <Columns>
+                        <TemplateColumn HeaderClass="d-none p-0 m-0" CellClass="p-0 m-0">
+                            <CellTemplate>
+                                <div class="p-0 m-0 mx-auto overflow-hidden" style="width:100%;">
+                                    <span class="d-flex py-2 justify-content-between overflow-hidden">
+                                        <div class="ps-4 py-2 my-auto w-100">
+                                            <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; word-wrap:anywhere; text-decoration: @(context.Item.Status==Status.Done ? "line-through" : "")" class="m-0 @(context.Item.Status==Status.Done ? "text-muted" : "")">@context.Item.Text</p>
+                                        </div>
+                                        <MudMenu ActivationEvent="MouseEvent.RightClick">
+                                            <ActivatorContent>
+                                                <MudIconButton OnClick="() => ToggleDone(context.Item, null)" Icon="@(context.Item.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : context.Item.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 ms-4 me-2 p-0 flex-shrink-1" Color="context.Item.Status == Status.InProgress ? Color.Primary:Color.Default" />
+                                            </ActivatorContent>
+                                            <ChildContent>
+                                                @if (context.Item.Status != Status.ToDo)
+                                                {
+                                                    <MudMenuItem OnClick="() => ToggleDone(context.Item, Status.ToDo)" OnTouch="() => ToggleDone(context.Item, Status.ToDo)">Marcar por hacer</MudMenuItem>
+                                                }
+                                                @if (context.Item.Status != Status.InProgress)
+                                                {
+                                                    <MudMenuItem OnClick="() => ToggleDone(context.Item, Status.InProgress)" OnTouch="() => ToggleDone(context.Item, Status.InProgress)">Marcar en progreso</MudMenuItem>
+                                                }
+                                                @if (context.Item.Status != Status.Done)
+                                                {
+                                                    <MudMenuItem OnClick="() => ToggleDone(context.Item, Status.Done)" OnTouch="() => ToggleDone(context.Item, Status.Done)">Marcar hecho</MudMenuItem>
+                                                }
+                                            </ChildContent>
+                                        </MudMenu>
+                                    </span>
+                                </div>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            }
+        </div>
+
+    </DialogContent>
+</MudDialog>
+@code {
+    List<SubToDo> SubTodos { get; set; } = new List<SubToDo>();
+
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter]
+    public string ToDo { get; set; }
+
+    protected async override void OnInitialized()
+    {
+        base.OnInitialized();
+        SubTodos = _conn.GetSubToDos().Where(x => x.ToDo.Equals(ToDo)).ToList();
+        StateHasChanged();
+    }
+
+    private void ToggleDone(SubToDo subtodo, Status? status)
+    {
+        subtodo.Modified = DateTime.UtcNow;
+        if (status == null)
+        {
+            if (subtodo.Done) { subtodo.Status = Status.ToDo; }
+            else { subtodo.Status = Status.Done; }
+        }
+        else
+        {
+            subtodo.Status = status.Value;
+        }
+        _conn.Conn.Update(subtodo);
+    }
+}

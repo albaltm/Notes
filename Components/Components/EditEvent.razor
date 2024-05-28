@@ -14,8 +14,16 @@
 
 <MudDialog @onkeypress="@Enter">
     <DialogActions>
-        <div class="d-flex w-100">
-            <MudIconButton OnClick="() => SaveEvent()" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+        <div class="d-flex w-100 justify-content-between">
+            @if (Id != null)
+            {
+                <MudButton OnClick="() => DeleteEvent()">Eliminar</MudButton>
+                <MudIconButton OnClick="() => SaveEvent()" class="small text-dark" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+            }
+            else
+            {
+                <MudIconButton OnClick="() => SaveEvent()" class="small text-dark mx-auto" Icon="@Icons.Material.Rounded.Check"></MudIconButton>
+            }
         </div>
     </DialogActions>
     <DialogContent>
@@ -23,21 +31,23 @@
             @if (Event != null)
             {
                 <MudForm @ref="form">
-                    <div class="p-0 mt-3 d-flex">
+                    <div class="p-0 mt-sm-3 d-flex">
                         <span class="m-0 mt-4 me-1 me-sm-4">
                             <IconPicker @bind-Icon="@Icon" />
                         </span>
                         <span style="width:100%;" class="ms-1 ms-sm-4"><MudTextField @bind-Value="Text" Required="true" RequiredError="Campo obligatorio" Immediate Placeholder="Título" Style="display:inline-block;" /></span>
                     </div>
 
-                    <div class="d-flex mb-3" style="margin-top:2.5em;">
-                        <MudDatePicker Class="pe-2" @bind-Date="StartDate" Label="Inicio" Required="true" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog" />
-                        <MudDatePicker Class="ps-2" @bind-Date="EndDate" Label="Fin" PickerVariant="PickerVariant.Dialog" Clearable />
+                    <div class="d-flex mb-sm-3 row row-cols-1 row-cols-sm-2" style="margin-top:2.5em;">
+                        <MudDatePicker Class="pe-sm-2 col" @bind-Date="StartDate" Label="Inicio" Required="true" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog"
+                                       IsDateDisabledFunc="@((DateTime dt)=>((Id == null || (Id != null && Event.Start.Date <= DateTime.Today)) && dt.Date < DateTime.Today))" ReadOnly="Id != null && Event.Start < DateTime.Today" />
+                        <MudDatePicker Class="ps-sm-2 col" @bind-Date="EndDate" Label="Fin" PickerVariant="PickerVariant.Dialog" Clearable
+                                       IsDateDisabledFunc="@((DateTime dt)=>(Id == null && dt.Date < DateTime.Today))" ReadOnly="Id != null && Event.End < DateTime.Now" />
                     </div>
 
-                    <div class="d-flex" style="margin-bottom:3em;">
-                        <MudTimePicker Class="pe-2" @bind-Time="StartHour" PickerVariant="PickerVariant.Dialog" Clearable="endHour == null" />
-                        <MudTimePicker Class="ps-2" @bind-Time="EndHour" PickerVariant="PickerVariant.Dialog" Clearable />
+                    <div class="d-flex row row-cols-1 row-cols-sm-2 " style="margin-bottom:3em;">
+                        <MudTimePicker Class="pe-sm-2 col" @bind-Time="StartHour" Label="Hora inicio" PickerVariant="PickerVariant.Dialog" Clearable="EndHour == null" ReadOnly="Id != null && Event.Start < DateTime.Today" />
+                        <MudTimePicker Class="ps-sm-2 col" @bind-Time="EndHour" Label="Hora fin" PickerVariant="PickerVariant.Dialog" Clearable ReadOnly="Id != null && Event.End < DateTime.Now" />
                     </div>
                 </MudForm>
             }
@@ -65,7 +75,6 @@
     }
 
     private MudMenu menu;
-    private MudColorPicker pickericono;
 
     private Event Event { get; set; }
 
@@ -79,7 +88,8 @@
         get { return Event.Icon; }
         set { Event.Icon = value; }
     }
-    private DateTime startDate { get; set; } = DateTime.Today;
+
+    private DateTime startDate { get; set; }
     private DateTime? StartDate
     {
         get
@@ -90,7 +100,15 @@
         {
             if (value != null)
             {
+                if (EndDate == startDate)
+                {
+                    EndDate = value.Value;
+                }
                 startDate = value.Value;
+                if (EndDate < value.Value)
+                {
+                    EndDate = value.Value;
+                }
             }
         }
     }
@@ -99,15 +117,26 @@
     {
         get
         {
+            //if (endDate == startDate) return null;
             return endDate;
         }
         set
         {
-            endDate = value;
-            if (value < StartDate.Value) { StartDate = value; }
-            if (value == null && startHour > endHour) { EndHour = StartHour; }
+            if (value == null)
+            {
+                endDate = startDate;
+            }
+            else
+            {
+                endDate = value.Value;
+                if (StartDate > value.Value)
+                {
+                    StartDate = value.Value;
+                }
+            }
         }
     }
+
     private TimeSpan? startHour { get; set; }
     private TimeSpan? StartHour
     {
@@ -151,6 +180,7 @@
                     Id = Guid.NewGuid().ToString(),
                     User = token
                 };
+            StartDate = Event.Start.Date;
         }
         else
         {
@@ -160,12 +190,12 @@
             {
                 startHour = Event.Start.TimeOfDay;
             }
-            if (Event.End?.Date != Event.Start.Date)
+            if (Event.End.Value.Date != Event.Start.Date)
             {
-                endDate = Event.End?.Date;
-                if (Event.End?.TimeOfDay != Event.End?.Date.AddDays(1).AddSeconds(-1).TimeOfDay)
+                endDate = Event.End.Value.Date;
+                if (Event.End.Value.TimeOfDay != Event.End.Value.Date.AddDays(1).AddSeconds(-1).TimeOfDay)
                 {
-                    endHour = Event.End?.TimeOfDay;
+                    endHour = Event.End.Value.TimeOfDay;
                 }
             }
         }
@@ -209,7 +239,7 @@
                 Event.End = startDate.AddDays(1).AddSeconds(-1);
             }
         }
-        
+
 
         if (Id == null)
         {
@@ -220,5 +250,11 @@
             _conn.GetConnection().Update(Event);
         }
         NavigationManager.NavigateTo($"/calendar/{Id}", true);
+    }
+
+    private async void DeleteEvent()
+    {
+        await EventService.DeleteEvent(token, FirebasePath, Event);
+        Close();
     }
 }

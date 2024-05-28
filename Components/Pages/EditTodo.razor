@@ -1,0 +1,374 @@
+﻿@page "/edittodo"
+@page "/edittodo/{Id}"
+
+@using AppNotes.Components.Components
+@using AppNotes.Components.Layout
+@using AppNotes.Components.Pages
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
+@inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject SynchronizationService SynchronizationService
+@inject ToDoService ToDoService
+@inherits Global
+
+<style>
+    .expandable {
+        display: flex;
+        border-radius: 4px 4px 0 0;
+    }
+
+    .hoverclass:hover {
+        background-color: rgba(123, 123, 123, 0.1);
+        cursor: pointer;
+    }
+
+    #picker {
+        max-width: 70vw;
+        overflow: auto;
+    }
+</style>
+
+<MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="GoBack" />
+
+<div class="pb-4">
+    @if (ToDoItem != null)
+    {
+        <MudForm @ref="form">
+            <div class="row" style="margin: 1.5em 0;">
+                <div class="col p-0 d-inline-block position-relative" style="height:3.5em; font-size: 0.9em;">
+                    @if (!ToDoItem.Color.Equals("inherit"))
+                    {
+                        <MudIconButton Class="position-absolute bottom-0 end-0" Style="margin-right:2.1em; margin-bottom:0.4em;" Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" OnClick="@(() => ToDoItem.Color = "inherit")"></MudIconButton>
+                    }
+                    <div class=" position-absolute bottom-0 end-0" style="width:3em; height:3em; background-color: @ToDoItem.Color; border-radius: 3px;">
+                        @if (ToDoItem.Color.Equals("inherit"))
+                        {
+                            <MudIcon Icon="@Icons.Material.Rounded.Palette" Class="ms-2 mt-1" />
+                        }
+                    </div>
+                    <MudColorPicker @bind-Text="ToDoItem.Color" AdornmentIcon="" Class="position-absolute bottom-0 end-0" style="width:2.4em; color:transparent;" ColorPickerView="ColorPickerView.GridCompact" PickerVariant="PickerVariant.Dialog" />
+                </div>
+                <div class="col d-inline-block pt-2" id="picker"><IconPicker @bind-Icon="@ToDoItem.Icon" /></div>
+            </div>
+            <MudTextField @bind-Value="ToDoItem.Text" Immediate Placeholder="Título" Style="display:inline-block; margin: 0.8em 0;" Required="true" RequiredError="Campo obligatorio" />
+
+            <MudTextField @bind-Value="ToDoItem.Description" AutoGrow Placeholder="Descripción" Variant="MudBlazor.Variant.Outlined" MaxLines="5" Lines="3" Style="margin: 1.5em 0;"></MudTextField>
+
+            <div class="justify-content-between expandable hoverclass p-2 mud-theme-primary" @onclick="@(() => subTodoExpanded = !subTodoExpanded)">
+                <MudText>Subtareas</MudText>
+                <MudIcon Icon="@(subTodoExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" />
+            </div>
+            <MudCollapse Expanded="subTodoExpanded" Class="pb-3">
+                @if (SubTodos.Count() == 0)
+                {
+                    <MudText Class="text-center text-muted mt-4 mb-2 pt-4">Aún no tienes subtareas</MudText>
+                }
+                @foreach (var subtodo in SubTodos)
+                {
+                    <div class="d-flex">
+                        <MudMenu ActivationEvent="MouseEvent.RightClick">
+                            <ActivatorContent>
+                                <MudIconButton Color="Color.Primary" OnClick="() => ToggleDone(subtodo, null)" Icon="@(subtodo.Status == Status.ToDo ? @Icons.Material.Rounded.RadioButtonUnchecked : subtodo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckCircle)" Class="me-2 ms-0 mt-4 p-0" Size="Size.Small" />
+                            </ActivatorContent>
+                            <ChildContent>
+                                @if (subtodo.Status != Status.ToDo)
+                                {
+                                    <MudMenuItem OnClick="() => ToggleDone(subtodo, Status.ToDo)" OnTouch="() => ToggleDone(subtodo, Status.ToDo)">Marcar por hacer</MudMenuItem>
+                                }
+                                @if (subtodo.Status != Status.InProgress)
+                                {
+                                    <MudMenuItem OnClick="() => ToggleDone(subtodo, Status.InProgress)" OnTouch="() => ToggleDone(subtodo, Status.InProgress)">Marcar en progreso</MudMenuItem>
+                                }
+                                @if (subtodo.Status != Status.Done)
+                                {
+                                    <MudMenuItem OnClick="() => ToggleDone(subtodo, Status.Done)" OnTouch="() => ToggleDone(subtodo, Status.Done)">Marcar hecho</MudMenuItem>
+                                }
+                            </ChildContent>
+                        </MudMenu>
+                        <span style="text-decoration: @(subtodo.Status == Status.Done ? "line-through" : "")" class="w-100">
+                            <MudTextField @bind-Value="subtodo.Text" Placeholder="Subtarea" Style="height:1.6em;" Class="p-0 m-0" Disabled="subtodo.Status == Status.Done"></MudTextField>
+                        </span>
+                        <span>
+                            <MudIconButton OnClick="() => DeleteSubTodo(subtodo)" Icon="@Icons.Material.Rounded.Close" Size="Size.Small" Class="mt-3"></MudIconButton>
+                        </span>
+                    </div>
+                }
+
+                <div class="w-100 d-flex" style="margin-top: 1.5em;">
+                    @if (SubTodos.Count > 3)
+                    {
+                        <div class="mx-auto">
+                            <MudButton OnClick="DeleteAllSubTodo" Class="me-2 me-sm-5" Size="Size.Small">Eliminar todas</MudButton>
+                            <MudButton OnClick="CreateSubTodo" Class="ms-2 ms-sm-5" Color="Color.Primary" Variant="MudBlazor.Variant.Filled" Size="Size.Small">Nueva</MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudButton Class="mx-auto" OnClick="CreateSubTodo" Color="Color.Primary" Variant="MudBlazor.Variant.Filled" Size="Size.Small">Nueva</MudButton>
+                    }
+                </div>
+            </MudCollapse>
+
+            <div class="d-flex justify-content-between" style="margin: 1.5em 0;">
+                <MudText>Prioridad</MudText>
+                <div>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Remove" Size="Size.Small" OnClick="() => ToDoItem.Priority--" Disabled="ToDoItem.Priority==-10"></MudIconButton>
+                    <span class="mx-2">@ToDoItem.Priority</span>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Add" Size="Size.Small" OnClick="() => ToDoItem.Priority++" Disabled="ToDoItem.Priority==10"></MudIconButton>
+                </div>
+            </div>
+
+            <div class="row row-cols-1 row-cols-md-2 mt-2">
+                <div class="col d-flex justify-content-between">
+                    <MudDatePicker Label="Fecha inicio" @bind-Date="StartDate" MinDate="(Id != null && ToDoItem.Start < DateTime.Now) ? ToDoItem.Start.Date : DateTime.Today" PickerVariant="PickerVariant.Dialog" DisableUnderLine />
+                </div>
+
+                <div class="col d-flex justify-content-between">
+                    <MudTimePicker Label="Hora inicio" @bind-Time="StartHour" PickerVariant="PickerVariant.Dialog" Clearable DisableUnderLine />
+                </div>
+            </div>
+            <div class="row row-cols-1 row-cols-md-2 mt-2">
+                <div class="col d-flex justify-content-between">
+                    <MudDatePicker Label="Fecha límite" @bind-Date="LimitDate" MinDate="(Id != null && ToDoItem.End < DateTime.Now) ? ToDoItem.End?.Date : DateTime.Today" PickerVariant="PickerVariant.Dialog" Clearable DisableUnderLine />
+                </div>
+
+                @if (ToDoItem.End?.TimeOfDay != null)
+                {
+                    <div class="col d-flex justify-content-between">
+                        <MudTimePicker Label="Hora límite" @bind-Time="LimitHour" PickerVariant="PickerVariant.Dialog" Clearable DisableUnderLine />
+                    </div>
+                }
+            </div>
+
+
+            <div class="d-flex" style="margin-top: 1.5em;">
+                <MudIcon Icon="@(ToDoItem.AddToCalendar ? Icons.Material.Rounded.CheckBox : Icons.Material.Rounded.CheckBoxOutlineBlank)" @onclick="() => ToDoItem.AddToCalendar = !ToDoItem.AddToCalendar" Class="me-2" />
+                <MudText>Añadir al calendario</MudText>
+            </div>
+            @if (ToDoItem.End != null)
+            {
+                <div class="d-flex mt-3">
+                    <MudIcon Icon="@(ToDoItem.Repeat ? Icons.Material.Rounded.CheckBox : Icons.Material.Rounded.CheckBoxOutlineBlank)" @onclick="() => ToDoItem.Repeat = !ToDoItem.Repeat" Class="me-2" />
+                    <MudText>Mostrar todos los días hasta completar</MudText>
+                </div>
+            }
+        </MudForm>
+
+        <div class="d-flex" style="margin-top: 1.5em;">
+            @if (Id != null)
+            {
+                <div class="mx-auto">
+                    <MudButton OnClick="DeleteToDo" class="small me-2 me-sm-5">Eliminar</MudButton>
+                    <MudButton OnClick="() => SaveToDo(true)" class="small ms-2 ms-sm-5" Color="Color.Primary" Variant="MudBlazor.Variant.Filled">Guardar</MudButton>
+                </div>
+            }
+            else
+            {
+                <MudButton OnClick="() => SaveToDo(true)" class="small mx-auto" Color="Color.Primary" Variant="MudBlazor.Variant.Filled">Guardar</MudButton>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    bool subTodoExpanded = false;
+    private List<SubToDo> SubTodos { get; set; }
+    private List<SubToDo> SubTodosToRemove { get; set; } = new List<SubToDo>();
+
+    private MudForm form;
+    private MudColorPicker pickericono;
+
+    private ToDoItem ToDoItem { get; set; }
+
+    private string token;
+
+    private DateTime? StartDate
+    {
+        get { return ToDoItem.Start.Date; }
+        set 
+        {
+            ToDoItem.Start = value.Value.Date + ToDoItem.Start.TimeOfDay;
+            if (ToDoItem.Start > ToDoItem.End) { ToDoItem.End = ToDoItem.Start.Date.AddDays(1).AddSeconds(-1); }
+        }
+    }
+    private TimeSpan? StartHour
+    {
+        get
+        {
+            if (ToDoItem.Start.TimeOfDay == ToDoItem.Start.Date.TimeOfDay)
+            {
+                return null;
+            }
+            return ToDoItem.Start.TimeOfDay;
+        }
+        set
+        {
+            if (value == null)
+            {
+                ToDoItem.Start = ToDoItem.Start.Date;
+            }
+            else
+            {
+                ToDoItem.Start = ToDoItem.Start.Date + value.Value;
+            }
+            if (ToDoItem.Start > ToDoItem.End) { ToDoItem.End = ToDoItem.Start; }
+        }
+    }
+    private DateTime? LimitDate
+    {
+        get { return ToDoItem.End?.Date; }
+        set 
+        {
+            if (value == null) { ToDoItem.Repeat = false; }
+            if (ToDoItem.End?.TimeOfDay != null) { ToDoItem.End = value?.Date + ToDoItem.End?.TimeOfDay; }
+            else { ToDoItem.End = value?.Date.AddDays(1).AddSeconds(-1); }
+            if (ToDoItem.Start > ToDoItem.End) { ToDoItem.Start = ToDoItem.End.Value.Date; }
+        }
+    }
+    private TimeSpan? LimitHour
+    {
+        get 
+        {
+            if (ToDoItem.End?.TimeOfDay == ToDoItem.End?.Date.AddDays(1).AddSeconds(-1).TimeOfDay)
+            {
+                return null;
+            }
+            return ToDoItem.End?.TimeOfDay;
+        }
+        set { 
+            if(value == null)
+            {
+                ToDoItem.End = ToDoItem.End?.Date.AddDays(1).AddSeconds(-1);
+            }
+            else
+            {
+                ToDoItem.End = ToDoItem.End?.Date + value;
+            }
+            if (ToDoItem.Start > ToDoItem.End) { ToDoItem.Start = ToDoItem.End.Value; }
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            ToDoItem = new ToDoItem()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    User = token,
+                    Modified = DateTime.UtcNow,
+                };
+        }
+        else
+        {
+            await SynchronizationService.TrySyncToDo(token);
+            ToDoItem = _conn.GetToDo(Id);
+        }
+        SubTodos = _conn.GetSubToDos().Where(x => x.ToDo.Equals(ToDoItem.Id)).OrderBy(x => x.Created).ToList();
+    }
+
+    private async Task SaveToDo(bool exit)
+    {
+        await form.Validate();
+        if (!form.IsValid) { return; }
+
+        ToDoItem.Modified = DateTime.UtcNow;
+        if (Id == null)
+        {
+            Id = await ToDoService.CreateToDo(token, FirebasePath, ToDoItem);
+            ToDoItem = _conn.GetToDo(Id);
+        }
+        else
+        {
+            _conn.GetConnection().Update(ToDoItem);
+        }
+
+        foreach (var subtodo in SubTodos)
+        {
+            subtodo.Modified = DateTime.UtcNow;
+            if (subtodo.Id == null)
+            {
+                subtodo.ToDo = ToDoItem.Id;
+                subtodo.User = ToDoItem.User;
+                await ToDoService.CreateSubToDo(token, FirebasePath, subtodo);
+            }
+            else
+            {
+                _conn.Conn.Update(subtodo);
+            }
+        }
+
+        foreach (var subtodo in SubTodosToRemove)
+        {
+            ToDoService.DeleteSubToDo(token, FirebasePath, subtodo);
+        }
+
+        if (exit)
+        {
+            await JSRuntime.InvokeVoidAsync("history.back");
+            //NavigationManager.NavigateTo("/to-do", true);
+        }
+    }
+
+    private async void DeleteToDo()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Eliminar",
+            "¿Seguro que quieres eliminar esta tarea?",
+            yesText: "Si", noText: "Cancelar");
+        if (result == true)
+        {
+            await ToDoService.DeleteToDo(token, FirebasePath, ToDoItem);
+            NavigationManager.NavigateTo("/to-do", true);
+        }
+    }
+
+    private void CreateSubTodo()
+    {
+        SubTodos.Add(new SubToDo());
+    }
+
+    private void DeleteAllSubTodo()
+    {
+        foreach (var subtodo in SubTodos.ToList())
+        {
+            DeleteSubTodo(subtodo);
+        }
+    }
+
+    private void DeleteSubTodo(SubToDo subtodo)
+    {
+        SubTodos.Remove(subtodo);
+        if (subtodo.Id != null) { SubTodosToRemove.Add(subtodo); }
+    }
+
+    private void ToggleDone(SubToDo subtodo, Status? status)
+    {
+        subtodo.Modified = DateTime.UtcNow;
+        if (status == null)
+        {
+            if (subtodo.Done) { subtodo.Status = Status.ToDo; }
+            else
+            {
+                subtodo.Status = Status.Done;
+            }
+        }
+        else
+        {
+            subtodo.Status = status.Value;
+        }
+    }
+
+    private async Task GoBack()
+    {
+        await JSRuntime.InvokeVoidAsync("history.back");
+    }
+}

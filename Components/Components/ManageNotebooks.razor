@@ -27,9 +27,9 @@
                     <Columns>
                         <TemplateColumn HeaderClass="d-none p-0 m-0" CellClass="p-0 m-0">
                             <CellTemplate>
-                                <div class="notebook row p-0 py-2 m-0 mx-auto overflow-hidden" style="width:100%; height:4em;">
-                                    <span class="col-8 col-sm-10 d-flex overflow-hidden" style="cursor:pointer; height:3em;" @onclick="() => FilterNotebook(context.Item)">
-                                        <span class="d-inline-block my-auto">
+                                <div class="notebook row p-0 m-0 mx-auto overflow-hidden" style="width:100%; height:4em;">
+                                    <span class="col-8 col-sm-10 d-flex my-auto" style="flex-direction:row;cursor:pointer; height:2.9em;" @onclick="() => FilterNotebook(context.Item)">
+                                        <span class="my-auto" style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; word-wrap:anywhere;">
                                             @context.Item.Name
                                         </span>
                                     </span>
@@ -43,6 +43,10 @@
                         </TemplateColumn>
                     </Columns>
                 </MudDataGrid>
+
+                <div class="d-flex mt-3">
+                    <MudButton StartIcon="@Icons.Material.Rounded.Add" Class="mx-auto" OnClick="() => EditNotebook(null)">Nueva</MudButton>
+                </div>
             }
         </div>
 
@@ -63,7 +67,11 @@
     private async void EditNotebook(Notebook notebook)
     {
         var parameters = new DialogParameters<EditNotebook>();
-        parameters.Add(x => x.Id, notebook.Id);
+        if (notebook != null)
+        {
+            parameters.Add(x => x.Id, notebook.Id);
+
+        }
         MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
             {
                 DisableBackdropClick = true,
@@ -86,19 +94,23 @@
             yesText: "Si", noText: "Cancelar");
         if (result == true)
         {
-            bool? resultNotes = await DialogService.ShowMessageBox(
+            var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id));
+            if (notes.Count() > 0)
+            {
+                bool? resultNotes = await DialogService.ShowMessageBox(
             "Eliminar",
             "¿Quieres eliminar también todas las notas incluidas en esta libreta?",
             yesText: "Si", noText: "Cancelar");
-            if (resultNotes == true)
-            {
-                var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id));
-                foreach (var note in notes)
+                if (resultNotes == true)
                 {
-                    await LibraryService.DeleteNote(token, FirebasePath, note);
+
+                    foreach (var note in notes)
+                    {
+                        await LibraryService.DeleteNote(token, FirebasePath, note);
+                    }
                 }
             }
-
+            
             await LibraryService.DeleteNotebook(token, FirebasePath, notebook);
             Notebooks.Remove(notebook);
 

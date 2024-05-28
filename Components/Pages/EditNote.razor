@@ -37,7 +37,7 @@
         .rz-html-editor-toolbar {
             background-color: inherit;
             color: inherit;
-            padding: 0; 1em;
+            padding: 0.5em;
         }
 
         .rz-html-editor-button {
@@ -48,8 +48,7 @@
         .rz-html-editor-content {
             background-color: inherit;
             color: inherit;
-            padding-top: 1em;
-            padding-bottom: 1em;
+            padding: 1em;
         }
 
         .rz-html-editor-dropdown-items {
@@ -124,14 +123,22 @@
                             <MudIcon Icon="@(Bookmark ? Icons.Material.Rounded.Bookmark : Icons.Material.Rounded.BookmarkBorder)" Color="@Color.Primary" Class="ms-2 mt-2 me-2 position-absolute end-0" Size="Size.Medium" />
                         </div>
                     </MudMenuItem>
-                    @if (notesInNotebook > 1)
-                    {
-                        <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="OpenNotebook" OnTouch="OpenNotebook">
-                            <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
-                                <span class="pt-3">Libreta</span>
-                            </div>
-                        </MudMenuItem>
-                    }
+
+                    <MudMenuItem Style="height:3.5em; padding-top:0; padding-bottom:0;" OnClick="OpenNotebook" OnTouch="OpenNotebook">
+                        <div class="p-0 pt-1 d-flex position-relative" style="height:3.5em; font-size: 0.9em; min-width:9em;">
+                            <span class="pt-3">Libreta</span>
+                        </div>
+                    </MudMenuItem>
+
+                    <MudMenuItem OnClick="() => DeleteFromNotebook()" OnTouch="() => DeleteFromNotebook()">
+                        <span style=" font-size: 0.9em;">Quitar de libreta</span>
+                    </MudMenuItem>
+                }
+                else
+                {
+                    <MudMenuItem OnClick="() => AddToNotebook()" OnTouch="() => AddToNotebook()">
+                        <span style=" font-size: 0.9em;">Seleccionar libreta</span>
+                    </MudMenuItem>
                 }
                 <MudMenuItem OnClick="DeleteNote" OnTouch="DeleteNote">
                     <span style=" font-size: 0.9em;">Eliminar nota</span>
@@ -248,8 +255,18 @@
         set
         {
             var notebook = _conn.GetNotebook(Note.Notebook);
-            notebook.Bookmark = Note.Id;
+            bool bookmarked = _conn.GetNotebook(Note.Notebook).Bookmark.Equals(Note.Id);
+            if (bookmarked)
+            {
+                notebook.Bookmark = "";
+            }
+            else
+            {
+                notebook.Bookmark = Note.Id;
+            }
+            notebook.Modified = DateTime.UtcNow;
             _conn.Conn.Update(notebook);
+            SaveNote();
         }
     }
     private bool CanChangePage { get; set; } = false;
@@ -267,12 +284,11 @@
                     Modified = DateTime.UtcNow,
                 };
 
-            await LibraryService.CreateNote(token, FirebasePath, Note);
-            NavigationManager.NavigateTo($"/editnote/{Note.Id}");
+            Id = await LibraryService.CreateNote(token, FirebasePath, Note);
+            NavigationManager.NavigateTo($"/editnote/{Id}");
         }
         else
         {
-            await SynchronizationService.TrySyncLibrary(token);
             Note = _conn.GetNote(Id);
         }
 
@@ -319,7 +335,6 @@
 
     private async void ChangePage(bool previous)
     {
-        await SynchronizationService.TrySyncLibrary(token);
         var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook));
         int nextPosition = (Note.Position + 1) % notes.Count();
         if (previous)
@@ -331,6 +346,7 @@
         CanChangePage = notes.Count() > 1;
         notesInNotebook = CountNotes();
         NavigationManager.NavigateTo($"/editnote/{Id}");
+        SynchronizationService.TrySyncLibrary(token);
     }
 
     private async void OpenNotebook()
@@ -346,5 +362,48 @@
                 FullWidth = true
             };
         DialogService.Show<EditNotebook>("Libreta", parameters, options);
+    }
+
+    private async void AddToNotebook()
+    {
+        var parameters = new DialogParameters<ChooseNotebook>();
+        parameters.Add(x => x.Note, Note.Id);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        var dialog = await DialogService.ShowAsync<ChooseNotebook>("Libretas", parameters, options);
+        var result = dialog.Result;
+        NavigationManager.Refresh(true);
+    }
+
+    private void DeleteFromNotebook()
+    {
+        var notebook = _conn.GetNotebook(Note.Notebook);
+
+        var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook) && !x.Id.Equals(Note.Id) && x.Position > Note.Position).OrderBy(x => x.Position).ToList();
+        foreach (var notetoposition in notesinnotebook)
+        {
+            var position = notetoposition.Position - 1;
+            notetoposition.Position = position;
+            notetoposition.Modified = DateTime.UtcNow;
+            _conn.Conn.Update(notetoposition);
+        }
+
+        if (notebook.Bookmark.Equals(Note.Id))
+        {
+            notebook.Bookmark = "";
+        }
+
+        Note.Notebook = "";
+        Note.Position = -1;
+        notebook.Modified = DateTime.UtcNow;
+        Note.Modified = DateTime.UtcNow;
+        _conn.Conn.Update(notebook);
+        _conn.Conn.Update(Note);
     }
 }

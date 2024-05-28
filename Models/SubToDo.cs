@@ -13,16 +13,18 @@ namespace AppNotes.Models
         [PrimaryKey]
         [Column("id")]
         public string Id { get; set; }
+        [Column("user")]
+        public string User { get; set; }
         [Column("idtodo")]
-        public string Id_ToDo { get; set; }
+        public string ToDo { get; set; }
         [Column("text")]
         public string Text { get; set; }
+        [Column("created")]
+        public DateTime Created { get; set; } = DateTime.UtcNow;
         [Column("modified")]
         public DateTime Modified { get; set; }
         [Column("status")]
         public Status Status { get; set; } = Status.ToDo;
-        [Column("priority")]
-        public Priority Important { get; set; } = 0;
 
         public bool Done => Status == Status.Done;
     }

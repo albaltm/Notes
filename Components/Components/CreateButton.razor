@@ -6,11 +6,12 @@
 
 <MudMenu class="position-fixed end-0 bottom-0 me-4 mb-4" AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
     <ActivatorContent>
-        <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" />
+        <MudFab StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Medium"/>
     </ActivatorContent>
     <ChildContent>
         <MudMenuItem OnClick="NewNotebook" OnTouch="NewNotebook" Style="min-width:12em;">Libreta<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.MenuBook" /></MudMenuItem>
         <MudMenuItem Href="/editnote">Nota<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.StickyNote2" /></MudMenuItem>
+        <MudMenuItem OnClick="NewToDo" OnTouch="NewToDo">Tarea<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.Checklist" /></MudMenuItem>
         <MudMenuItem OnClick="NewEvent" OnTouch="NewEvent">Evento<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.Today" /></MudMenuItem>
     </ChildContent>
 </MudMenu>
@@ -26,9 +27,11 @@
                 MaxWidth = MaxWidth.ExtraSmall,
                 FullWidth = true
             };
-        DialogService.Show<EditNotebook>("Libreta", options);
+        var dialog = await DialogService.ShowAsync<EditNotebook>("Libreta", options);
+        var result = await dialog.Result;
+        NavigationManager.NavigateTo("/library", true);
     }
-    private async Task NewEvent()
+    private void NewEvent()
     {
         MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
             {
@@ -39,5 +42,9 @@
                 FullWidth = true
             };
         DialogService.Show<EditEvent>("Evento", options);
+    }
+    private void NewToDo()
+    {
+        NavigationManager.NavigateTo($"/edittodo");
     }
 }

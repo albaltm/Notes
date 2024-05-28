@@ -29,6 +29,7 @@ namespace AppNotes.Services
                 
                 await TrySyncLibrary(token);
                 await TrySyncEvents(token);
+                await TrySyncToDo(token);
             }
             catch { }
         }
@@ -175,6 +176,93 @@ namespace AppNotes.Services
             catch { }
             
         }
+        public async Task TrySyncToDo(string token)
+        {
+            if (token.Equals("guest"))
+            {
+                return;
+            }
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
+
+                await SyncCreateQueueToDo(client, userId);
+                await SyncDeleteQueueToDo(client);
+
+                client.Dispose();
+
+                var subtodosFirebase = (await client.Child("subtodo").OnceAsync<SubToDo>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
+                var subtodos = _conn.GetSubToDos();
+                foreach (var subtodoFirebase in subtodosFirebase)
+                {
+                    SubToDo? subtodo = _conn.GetSubToDo(subtodoFirebase.Id);
+                    if (subtodo == null)
+                    {
+                        //se ha creado en otro dispositivo
+                        _conn.Conn.Insert(subtodoFirebase);
+                    }
+                    else
+                    {
+                        subtodos.Remove(subtodos.First(x => x.Id == subtodo.Id));
+                        if (subtodoFirebase.Modified != subtodo.Modified)
+                        {
+                            //la ultima modificacion no concuerda
+                            if (subtodoFirebase.Modified > subtodo.Modified)
+                            {
+                                _conn.Conn.Update(subtodoFirebase);
+                            }
+                            else
+                            {
+                                await client.Child("subtodo").Child(subtodo.Id).PutAsync(subtodo);
+                            }
+                        }
+                    }
+
+                }
+
+                var todosFirebase = (await client.Child("todo").OnceAsync<ToDoItem>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
+                var todos = _conn.GetToDos();
+                foreach (var todoFirebase in todosFirebase)
+                {
+                    ToDoItem? todo = _conn.GetToDo(todoFirebase.Id);
+                    if (todo == null)
+                    {
+                        //se ha creado en otro dispositivo
+                        _conn.Conn.Insert(todoFirebase);
+                    }
+                    else
+                    {
+                        var toremove = todos.First(u => u.Id == todo.Id);
+                        todos.Remove(toremove);
+                        if (todoFirebase.Modified != todo.Modified)
+                        {
+                            //la ultima modificacion no concuerda
+                            if (todoFirebase.Modified > todo.Modified)
+                            {
+                                _conn.Conn.Update(todoFirebase);
+                            }
+                            else
+                            {
+                                await client.Child("todo").Child(todo.Id).PutAsync(todo);
+                            }
+                        }
+                    }
+
+                }
+
+                //si algo se ha eliminado en otro dispositivo
+                foreach (var subtodo in subtodos)
+                {
+                    _conn.Conn.Delete(subtodo);
+                }
+                foreach (var todo in todos)
+                {
+                    _conn.Conn.Delete(todo);
+                }
+            }
+            catch { }
+        }
         private async Task SyncDeleteQueueLibrary(FirebaseClient client)
         {
             try
@@ -203,6 +291,26 @@ namespace AppNotes.Services
                 foreach (var item in deletequeue)
                 {
                     await client.Child("event").Child(item.Id).DeleteAsync();
+                    _conn.Conn.Delete(item);
+                }
+            }
+            catch { }
+        }
+        private async Task SyncDeleteQueueToDo(FirebaseClient client)
+        {
+            try
+            {
+                var deletequeue = _conn.GetDeleteQueue().Where(x => x.Type == DocumentType.SubToDo || x.Type == DocumentType.Todo);
+                foreach (var item in deletequeue)
+                {
+                    if (item.Type == DocumentType.SubToDo)
+                    {
+                        await client.Child("subtodo").Child(item.Id).DeleteAsync();
+                    }
+                    else if (item.Type == DocumentType.Todo)
+                    {
+                        await client.Child("todo").Child(item.Id).DeleteAsync();
+                    }
                     _conn.Conn.Delete(item);
                 }
             }
@@ -255,6 +363,38 @@ namespace AppNotes.Services
                     await client.Child("event").Child(evento.Id).PutAsync(evento);
                     _conn.Conn.Insert(evento);
 
+                    _conn.Conn.Delete(item);
+                }
+            }
+            catch { }
+        }
+        private async Task SyncCreateQueueToDo(FirebaseClient client, string userId)
+        {
+            try
+            {
+                var createqueue = _conn.GetCreateQueue().Where(x => x.Type == DocumentType.SubToDo || x.Type == DocumentType.Todo);
+                foreach (var item in createqueue)
+                {
+                    if (item.Type == DocumentType.SubToDo)
+                    {
+                        var subtodo = _conn.GetSubToDo(item.Id);
+                        _conn.Conn.Delete(subtodo);
+                        var firebaseItem = await client.Child("subtodo").PostAsync(subtodo);
+                        subtodo.Id = firebaseItem.Key;
+                        subtodo.User = userId;
+                        await client.Child("subtodo").Child(subtodo.Id).PutAsync(subtodo);
+                        _conn.Conn.Insert(subtodo);
+                    }
+                    else if (item.Type == DocumentType.Todo)
+                    {
+                        var todo = _conn.GetToDo(item.Id);
+                        _conn.Conn.Delete(todo);
+                        var firebaseItem = await client.Child("todo").PostAsync(todo);
+                        todo.Id = firebaseItem.Key;
+                        todo.User = userId;
+                        await client.Child("todo").Child(todo.Id).PutAsync(todo);
+                        _conn.Conn.Insert(todo);
+                    }
                     _conn.Conn.Delete(item);
                 }
             }
