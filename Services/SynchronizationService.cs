@@ -30,6 +30,7 @@ namespace AppNotes.Services
                 await TrySyncLibrary(token);
                 await TrySyncEvents(token);
                 await TrySyncToDo(token);
+                await TrySyncRoutines(token);
             }
             catch { }
         }
@@ -263,6 +264,93 @@ namespace AppNotes.Services
             }
             catch { }
         }
+        public async Task TrySyncRoutines(string token)
+        {
+            if (token.Equals("guest"))
+            {
+                return;
+            }
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
+
+                await SyncCreateQueueRoutine(client, userId);
+                await SyncDeleteQueueRoutine(client);
+
+                client.Dispose();
+
+                var registriesFirebase = (await client.Child("routineregistry").OnceAsync<RoutineRegistry>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
+                var registries = _conn.GetRoutinesRegistry();
+                foreach (var registryFirebase in registriesFirebase)
+                {
+                    RoutineRegistry? registry = _conn.GetRoutineRegistry(registryFirebase.Id);
+                    if (registry == null)
+                    {
+                        //se ha creado en otro dispositivo
+                        _conn.Conn.Insert(registryFirebase);
+                    }
+                    else
+                    {
+                        registries.Remove(registries.First(x => x.Id == registry.Id));
+                        if (registryFirebase.Modified != registry.Modified)
+                        {
+                            //la ultima modificacion no concuerda
+                            if (registryFirebase.Modified > registry.Modified)
+                            {
+                                _conn.Conn.Update(registryFirebase);
+                            }
+                            else
+                            {
+                                await client.Child("routineregistry").Child(registry.Id).PutAsync(registry);
+                            }
+                        }
+                    }
+
+                }
+
+                var routinesFirebase = (await client.Child("routine").OnceAsync<Routine>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
+                var routines = _conn.GetRoutines();
+                foreach (var routineFirebase in routinesFirebase)
+                {
+                    Routine? routine = _conn.GetRoutine(routineFirebase.Id);
+                    if (routine == null)
+                    {
+                        //se ha creado en otro dispositivo
+                        _conn.Conn.Insert(routineFirebase);
+                    }
+                    else
+                    {
+                        var toremove = routines.First(u => u.Id == routine.Id);
+                        routines.Remove(toremove);
+                        if (routineFirebase.Modified != routine.Modified)
+                        {
+                            //la ultima modificacion no concuerda
+                            if (routineFirebase.Modified > routine.Modified)
+                            {
+                                _conn.Conn.Update(routineFirebase);
+                            }
+                            else
+                            {
+                                await client.Child("routine").Child(routine.Id).PutAsync(routine);
+                            }
+                        }
+                    }
+
+                }
+
+                //si algo se ha eliminado en otro dispositivo
+                foreach (var registry in registries)
+                {
+                    _conn.Conn.Delete(registry);
+                }
+                foreach (var routine in routines)
+                {
+                    _conn.Conn.Delete(routine);
+                }
+            }
+            catch { }
+        }
         private async Task SyncDeleteQueueLibrary(FirebaseClient client)
         {
             try
@@ -310,6 +398,26 @@ namespace AppNotes.Services
                     else if (item.Type == DocumentType.Todo)
                     {
                         await client.Child("todo").Child(item.Id).DeleteAsync();
+                    }
+                    _conn.Conn.Delete(item);
+                }
+            }
+            catch { }
+        }
+        private async Task SyncDeleteQueueRoutine(FirebaseClient client)
+        {
+            try
+            {
+                var deletequeue = _conn.GetDeleteQueue().Where(x => x.Type == DocumentType.RoutineRegistry || x.Type == DocumentType.Routine);
+                foreach (var item in deletequeue)
+                {
+                    if (item.Type == DocumentType.RoutineRegistry)
+                    {
+                        await client.Child("routineregistry").Child(item.Id).DeleteAsync();
+                    }
+                    else if (item.Type == DocumentType.Routine)
+                    {
+                        await client.Child("routine").Child(item.Id).DeleteAsync();
                     }
                     _conn.Conn.Delete(item);
                 }
@@ -394,6 +502,38 @@ namespace AppNotes.Services
                         todo.User = userId;
                         await client.Child("todo").Child(todo.Id).PutAsync(todo);
                         _conn.Conn.Insert(todo);
+                    }
+                    _conn.Conn.Delete(item);
+                }
+            }
+            catch { }
+        }
+        private async Task SyncCreateQueueRoutine(FirebaseClient client, string userId)
+        {
+            try
+            {
+                var createqueue = _conn.GetCreateQueue().Where(x => x.Type == DocumentType.RoutineRegistry || x.Type == DocumentType.Routine);
+                foreach (var item in createqueue)
+                {
+                    if (item.Type == DocumentType.RoutineRegistry)
+                    {
+                        var registry = _conn.GetRoutineRegistry(item.Id);
+                        _conn.Conn.Delete(registry);
+                        var firebaseItem = await client.Child("routineregistry").PostAsync(registry);
+                        registry.Id = firebaseItem.Key;
+                        registry.User = userId;
+                        await client.Child("routineregistry").Child(registry.Id).PutAsync(registry);
+                        _conn.Conn.Insert(registry);
+                    }
+                    else if (item.Type == DocumentType.Routine)
+                    {
+                        var routine = _conn.GetRoutine(item.Id);
+                        _conn.Conn.Delete(routine);
+                        var firebaseItem = await client.Child("routine").PostAsync(routine);
+                        routine.Id = firebaseItem.Key;
+                        routine.User = userId;
+                        await client.Child("routine").Child(routine.Id).PutAsync(routine);
+                        _conn.Conn.Insert(routine);
                     }
                     _conn.Conn.Delete(item);
                 }

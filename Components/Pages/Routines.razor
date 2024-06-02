@@ -1,0 +1,317 @@
+﻿@page "/routines"
+@using AppNotes.Components.Components
+@using AppNotes.Services
+@inject ToDoService ToDoService
+@inject RoutineService RoutineService
+@inject SynchronizationService SynchronizationService
+@inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
+@inject IDialogService DialogService
+@inherits Global
+<style>
+    .expandable{
+        display:flex;
+        border-bottom: 2px solid rgba(123, 123, 123, 0.1);
+        border-radius: 4px 4px 0 0;
+    }
+
+    .hoverclass:hover {
+        background-color: rgba(123, 123, 123, 0.1);
+        cursor: pointer;
+    }
+</style>
+
+<MudText Color="Color.Primary" Typo="Typo.h6" Align="Align.Center">Rutinas</MudText>
+
+<span class="d-flex justify-content-between">
+    <div class="flex">
+        <MudMenu>
+            <ActivatorContent>
+                <span class="pt-2">
+                    <MudIconButton Icon="@Icons.Material.Rounded.MoreVert" DisableElevation Color="Color.Default" Size="Size.Small" Class="me-2" />
+                </span>
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem Class="py-1" AutoClose="false">
+                    <MudTextField T="string" Label="Búsqueda" @bind-Value="searchText" Immediate AdornmentIcon="@Icons.Material.Filled.Search"
+                                  AdornmentColor="Color.Primary" OnAdornmentClick="FilterByName" Adornment="Adornment.End" Clearable OnClearButtonClick="Recargar" />
+                </MudMenuItem>
+                <MudMenuItem Class="py-1" Href="/routinesummary">Ver resumen</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+        <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="() => SelectDate(SelectedDate.AddDays(-1))" Size="Size.Small" Style="width:1.5em; height:1.5em;" Class="my-auto d-inline-block" />
+        <MudDatePicker @bind-Date="selectedDate" DisableToolbar DisableUnderLine PickerVariant="PickerVariant.Dialog" AutoClose Color="Color.Primary" Style="width: 2.5em; max-height:0.1em; margin-left:-0.4em; margin-right: 1em; margin-top:0.9em;" Class="d-inline-block">
+            <PickerActions>
+                <MudButton Color="Color.Primary" Variant="MudBlazor.Variant.Filled" OnClick="() => SelectDate(DateTime.Today)" Class="mx-auto">Hoy</MudButton>
+            </PickerActions>
+        </MudDatePicker>
+        <MudIconButton Icon="@Icons.Material.Rounded.ArrowForward" OnClick="() => SelectDate(SelectedDate.AddDays(+1))" Size="Size.Small" Style="width:1.5em; height:1.5em;" Class="my-auto d-inline-block"></MudIconButton>
+    </div>
+        
+    <MudText Color="Color.Primary" Style="font-weight:bold; font-size:1.3em; cursor:context-menu;" Class="pt-2 pe-4 mt-1 d-inline-block">@($"{SelectedDate.Day} {Months.ElementAt(SelectedDate.Month)}")</MudText>
+</span>
+<div class="my-5 pb-5">
+    @if (RoutineList.Where(x => x.Status != Status.Done).Count() > 0)
+    {
+        @foreach (var registry in RoutineList.Where(x => x.Status != Status.Done))
+        {
+            <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass shadow-sm" Style="flex-direction:row; min-height:4em;" @onclick="() => OpenRegistry(registry)">
+                <div class="my-auto">
+                    <span style="color: @registry.Color;"><MudIcon Icon="@registry.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
+                </div>
+                <div class="w-100 my-auto mx-2">
+                    <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp: 2; word-wrap:anywhere;" class="m-0 w-100">@registry.Text</p>
+                </div>
+                @if (SelectedDate <= DateTime.Today)
+                {
+                    @if (_conn.GetRoutine(registry.Routine).Evaluation == EvaluationType.Completed)
+                    {
+                        <MudIconButton OnClick="() => ToggleDone(registry, Status.Done)" Icon="@(registry.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : registry.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" />
+                    }
+                    else
+                    {
+                        <div class="d-flex">
+                            <MudIconButton Icon="@Icons.Material.Rounded.Remove" OnClick="() => AddAmount(registry, true)" Disabled="registry.Amount==0 || registry.Start > DateTime.Today" Style="width:1em; height:1em;"></MudIconButton>
+                            <MudText Class="mx-4">@registry.Amount</MudText>
+                            <MudIconButton Icon="@Icons.Material.Rounded.Add" OnClick="() => AddAmount(registry, false)" Style="width:1em; height:1em;" Disabled="registry.Start > DateTime.Today"></MudIconButton>
+                        </div>
+
+                    }
+                }
+            </MudPaper>
+        }
+    }
+
+    @if (RoutineList.Where(x => x.Status == Status.Done).Count() > 0)
+    {
+        <div class="justify-content-between expandable hoverclass p-2 mt-3" @onclick="@(() => completedExpanded = !completedExpanded)">
+            <MudText Class="flex-grow-1">Completado hoy</MudText>
+            <MudText Style="font-size:1em; padding-top:0.2em; padding-right: 0.4em;">@RoutineList.Where(x => x.Status == Status.Done).Count()</MudText>
+            <MudIcon Icon="@(completedExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" />
+        </div>
+        <MudCollapse Expanded="completedExpanded" Class="mb-3">
+            @foreach (var registry in RoutineList.Where(x => x.Status == Status.Done))
+            {
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenRegistry(registry)">
+                    <div class="my-auto">
+                        <span style="color: @registry.Color;"><MudIcon Icon="@registry.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
+                    </div>
+                    <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; word-wrap:anywhere;" class="m-0 w-100">@registry.Text</p>
+                    @if (SelectedDate <= DateTime.Today)
+                    {
+                        @if (_conn.GetRoutine(registry.Routine).Evaluation == EvaluationType.Completed)
+                        {
+                            <MudIconButton OnClick="() => ToggleDone(registry, Status.ToDo)" Icon="@(registry.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : registry.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" />
+                        }
+                        else
+                        {
+                            <div class="d-flex">
+                                <MudIconButton Icon="@Icons.Material.Rounded.Remove" OnClick="() => AddAmount(registry, true)" Disabled="registry.Amount==0 || registry.Start > DateTime.Today" Style="width:1em; height:1em;"></MudIconButton>
+                                <MudText Class="mx-4">@registry.Amount</MudText>
+                                <MudIconButton Icon="@Icons.Material.Rounded.Add" OnClick="() => AddAmount(registry, false)" Style="width:1em; height:1em;" Disabled="registry.Start > DateTime.Today"></MudIconButton>
+                            </div>
+
+                        }
+                    }
+                </MudPaper>
+            }
+        </MudCollapse>
+    }
+</div>
+
+<CreateButton />
+
+@code {
+    string token;
+
+    List<RoutineRegistry> RoutineList { get; set; } = new List<RoutineRegistry>();
+
+    string searchText { get; set; } = "";
+    bool completedExpanded = false;
+    bool openItem = false;
+    bool canAdd = true;
+    DateTime SelectedDate { get; set; } = DateTime.Today;
+    DateTime? selectedDate
+    {
+        get { return SelectedDate; }
+        set { SelectDate(value.Value.Date); }
+    }
+
+    protected override async void OnInitialized()
+    {
+        base.OnInitialized();
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+
+        Recargar();
+        StateHasChanged();
+        await SynchronizationService.TrySyncRoutines(token);
+        Recargar();
+        StateHasChanged();
+    }
+
+    private void Recargar()
+    {
+        RoutineList = new List<RoutineRegistry>();
+        var routines = _conn.GetRoutines().OrderByDescending(x => x.Priority);
+        foreach (var routine in routines)
+        {
+            if (RoutineService.ShowToday(routine, SelectedDate))
+            {
+                var registry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(routine.Id)).ToList().FirstOrDefault();
+                if (registry == null)
+                {
+                    registry = new RoutineRegistry()
+                        {
+                            Routine = routine.Id,
+                            User = routine.User,
+                            Color = routine.Color,
+                            Text = routine.Text,
+                            Icon = routine.Icon,
+                            Start = SelectedDate
+                        };
+                    RoutineList.Add(registry);
+                }
+                else
+                {
+                    RoutineList.Add(registry);
+                }
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void SelectDate(DateTime date)
+    {
+        SelectedDate = date.Date;
+        Recargar();
+    }
+
+    private async void ToggleDone (RoutineRegistry r, Status status)
+    {
+        var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+        if (registry == null)
+        {
+            await ToDoService.CreateRoutineRegistry(token, FirebasePath, r);
+            registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+        }
+        registry.Modified = DateTime.UtcNow;
+        registry.Status = status;
+        _conn.Conn.Update(registry);
+        Recargar();
+    }
+
+    private async void AddAmount(RoutineRegistry r, bool sustract)
+    {
+        if (!canAdd) { return; }
+        canAdd = false;
+        var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+        if (registry == null)
+        {
+            await ToDoService.CreateRoutineRegistry(token, FirebasePath, r);
+            registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+        }
+        var routine = _conn.GetRoutine(registry.Routine);
+        if (sustract)
+        {
+            registry.Amount = registry.Amount - 1;
+        }
+        else
+        {
+            registry.Amount = registry.Amount + 1;
+        }
+        if (routine.AmountModifier == AmountModifier.NoGoal)
+        {
+            if (registry.Amount == 0)
+            {
+                registry.Status = Status.ToDo;
+            }
+            else
+            {
+                registry.Status = Status.Done;
+            }
+        }
+        if (routine.AmountModifier == AmountModifier.Minimum)
+        {
+            if (registry.Amount == 0)
+            {
+                registry.Status = Status.ToDo;
+            }
+            else if (registry.Amount < routine.Goal)
+            {
+                registry.Status = Status.InProgress;
+            }
+            else
+            {
+                registry.Status = Status.Done;
+            }
+        }
+        if (routine.AmountModifier == AmountModifier.Exact)
+        {
+            if (registry.Amount == 0 || registry.Amount > routine.Goal)
+            {
+                registry.Status = Status.ToDo;
+            }
+            else if (registry.Amount == routine.Goal)
+            {
+                registry.Status = Status.Done;
+            }
+            else
+            {
+                registry.Status = Status.InProgress;
+            }
+        }
+        if (routine.AmountModifier == AmountModifier.Maximum)
+        {
+            if (registry.Amount <= routine.Goal)
+            {
+                registry.Status = Status.Done;
+            }
+            else
+            {
+                registry.Status = Status.ToDo;
+            }
+        }
+        registry.Modified = DateTime.UtcNow;
+        _conn.Conn.Update(registry);
+        Recargar();
+        canAdd = true;
+    }
+
+    private async void OpenRegistry(RoutineRegistry registry)
+    {
+        if (openItem) { return; }
+        openItem = true;
+
+        var existingRegistry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(registry.Routine)).FirstOrDefault();
+        if (existingRegistry == null)
+        {
+            var id = await ToDoService.CreateRoutineRegistry(token, FirebasePath, registry);
+            existingRegistry = _conn.GetRoutineRegistry(id);
+        }
+
+        var parameters = new DialogParameters<EditRegistry>();
+        parameters.Add(x => x.Registry, existingRegistry);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        var dialog = await DialogService.ShowAsync<EditRegistry>("Registro", parameters, options);
+        var result = await dialog.Result;
+
+        if (string.IsNullOrWhiteSpace(searchText)) { Recargar(); }
+        else { FilterByName(); }
+        openItem = false;
+    }
+
+    private void FilterByName()
+    {
+        if (string.IsNullOrWhiteSpace(searchText)) { searchText = ""; return; }
+        Recargar();
+        RoutineList = RoutineList.Where(x => x.Text.ToLower().Contains(searchText.ToLower())).ToList();
+        StateHasChanged();
+    }
+}

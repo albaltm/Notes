@@ -1,0 +1,197 @@
+﻿@page "/routinesummary"
+@using AppNotes.Services
+@inject ConexionBBDD _conn
+@inject RoutineService RoutineService
+@inject ToDoService ToDoService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+@inherits Global
+
+<style>
+    .hoverclass:hover {
+        background-color: rgba(123, 123, 123, 0.2) !important;
+        cursor: pointer;
+    }
+</style>
+
+<div class="d-flex">
+    <MudMenu>
+        <ActivatorContent>
+            <MudIconButton Icon="@Icons.Material.Rounded.FilterAlt" />
+        </ActivatorContent>
+        <ChildContent>
+            <MudMenuItem Class="py-1" AutoClose="false">
+                <MudTextField T="string" Label="Búsqueda" @bind-Value="searchText" Immediate AdornmentIcon="@Icons.Material.Filled.Search"
+                              AdornmentColor="Color.Primary" OnAdornmentClick="() => FilterByName()" Adornment="Adornment.End" Clearable OnClearButtonClick="Recargar" />
+            </MudMenuItem>
+            <MudMenuItem OnClick="FilterActive" OnTouch="FilterActive">Mostrar sólo activas</MudMenuItem>
+            <MudMenuItem OnClick="FilterInactive" OnTouch="FilterInactive">Mostrar sólo inactivas</MudMenuItem>
+            <MudMenuItem OnClick="Recargar" OnTouch="Recargar">Mostrar todas</MudMenuItem>
+        </ChildContent>
+    </MudMenu>
+    <MudText Color="Color.Primary" Typo="Typo.h5" Align="Align.Center" Class="my-3 fw-bold flex-grow-1">Rutinas</MudText>
+    <MudMenu>
+        <ActivatorContent>
+            <MudIconButton Icon="@Icons.Material.Rounded.MoreVert" />
+        </ActivatorContent>
+        <ChildContent>
+            <MudMenuItem OnClick="RestartProgress" OnTouch="RestartProgress">Reiniciar progreso</MudMenuItem>
+            <MudMenuItem OnClick="DeleteInactive" OnTouch="DeleteInactive">Eliminar inactivas</MudMenuItem>
+            <MudMenuItem OnClick="DeleteAll" OnTouch="DeleteAll">Eliminar todo</MudMenuItem>
+        </ChildContent>
+    </MudMenu>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2">
+    @foreach (var routine in Routines)
+    {
+        <div class="px-3">
+            <MudPaper Class="my-2 col hoverclass d-flex" @onclick="() => GoToHabit(routine)">
+                <div class="d-flex py-3 px-2 flex-grow-1" style="height:5em;">
+                    <span style="color:@routine.Color" class="me-2 my-auto"><MudIcon Icon="@routine.Icon" /></span>
+                    @* <MudText>@routine.Text</MudText> *@
+                    <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; word-wrap:anywhere;" class="m-0 my-auto">@routine.Text</p>
+                </div>
+                <MudMenu TransformOrigin="Origin.TopRight" AnchorOrigin="Origin.TopRight">
+                    <ActivatorContent>
+                        <MudIconButton Icon="@Icons.Material.Rounded.MoreVert" Class="d-inline-block mx-2" />
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem OnClick="() => Activate(routine)" OnTouch="() => Activate(routine)">@(routine.Active ? "Desactivar" : "Activar")</MudMenuItem>
+                        <MudMenuItem OnClick="() => Delete(routine)" OnTouch="() => Delete(routine)">Eliminar</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            </MudPaper>
+        </div>
+    }
+</div>
+
+
+
+@code {
+    private List<Routine> Routines { get; set; } = new List<Routine>();
+    private DateTime SelectedDate { get; set; } = DateTime.Today;
+    private DateTime Monday { get; set; }
+    string searchText { get; set; } = "";
+    string token = "";
+    int filter = 0;
+
+    protected async override void OnInitialized()
+    {
+        base.OnInitialized();
+        token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        Monday = GetFirstDayOfWeek(DateTime.Today);
+        Recargar();
+    }
+
+    private void Recargar()
+    {
+        Routines = _conn.GetRoutines().OrderByDescending(x => x.Priority).ToList();
+        StateHasChanged();
+        filter = 0;
+    }
+
+    private DateTime GetFirstDayOfWeek(DateTime day)
+    {
+        var diff = (int)day.DayOfWeek - 1;
+
+        if (diff < 0)
+            diff += 7;
+
+        return day.AddDays(-diff).Date;
+    }
+
+    private bool? Completed(Routine routine, int day)
+    {
+        if (!RoutineService.ShowToday(routine, Monday.AddDays(day))) return null;
+        var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(routine.Id) && x.Start == Monday.AddDays(day));
+        return false;
+    }
+
+    private void FilterByName()
+    {
+        StateHasChanged();
+        if (string.IsNullOrWhiteSpace(searchText)) { searchText = ""; return; }
+        Routines = Routines.Where(x => x.Text.ToLower().Contains(searchText.ToLower())).ToList();
+    }
+
+    private void FilterActive()
+    {
+        Routines = _conn.GetRoutines().Where(x => x.Active).OrderByDescending(x => x.Priority).ToList();
+        filter = 1;
+    }
+    private void FilterInactive()
+    {
+        Routines = _conn.GetRoutines().Where(x => !x.Active).OrderByDescending(x => x.Priority).ToList();
+        filter = 2;
+    }
+    private async void RestartProgress()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+                "Eliminar",
+               "¿Seguro que quieres reiniciar tu progreso? Esta acción eliminará todos los registros.",
+                yesText: "Si", noText: "Cancelar");
+        if (result != true)
+        {
+            return;
+        }
+        var registries = _conn.GetRoutinesRegistry().ToList();
+        foreach (var registry in registries)
+        {
+            ToDoService.DeleteRoutineRegistry(token, FirebasePath, registry);
+        }
+        Recargar();
+    }
+    private async void DeleteInactive()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+                "Eliminar",
+               "¿Seguro que quieres eliminar todas las rutinas inactivas?",
+                yesText: "Si", noText: "Cancelar");
+        if (result != true)
+        {
+            return;
+        }
+        var routines = _conn.GetRoutines().Where(x => !x.Active).ToList();
+        foreach (var routine in routines)
+        {
+            ToDoService.DeleteRoutine(token, FirebasePath, routine);
+        }
+        Recargar();
+    }
+    private async void DeleteAll()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+                "Eliminar",
+               "¿Seguro que quieres eliminar todas las rutinas?",
+                yesText: "Si", noText: "Cancelar");
+        if (result != true)
+        {
+            return;
+        }
+        var routines = _conn.GetRoutines().ToList();
+        foreach (var routine in routines)
+        {
+            ToDoService.DeleteRoutine(token, FirebasePath, routine);
+        }
+        Recargar();
+    }
+    private void Activate(Routine routine)
+    {
+        routine.Active = !routine.Active;
+        routine.Modified = DateTime.UtcNow;
+        _conn.Conn.Update(routine);
+        if (filter == 1) { FilterActive(); }
+        else if (filter == 2) { FilterInactive(); }
+    }
+    private async void Delete(Routine routine)
+    {
+        await ToDoService.DeleteRoutine(token, FirebasePath, routine);
+    }
+
+    private void GoToHabit(Routine routine)
+    {
+        NavigationManager.NavigateTo($"/editroutine/{routine.Id}", true);
+    }
+}

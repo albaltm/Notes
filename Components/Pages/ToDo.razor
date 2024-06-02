@@ -20,11 +20,11 @@
     }
 </style>
 
-<div class="d-flex mb-2">
-    <div>
+<div class="d-flex mb-2 justify-content-between">
+    <div style="width:3em;">
         <MudMenu>
             <ActivatorContent>
-                <MudFab StartIcon="@Icons.Material.Rounded.MoreVert" Color="Color.Default" Size="Size.Small" Style="cursor:pointer; min-width:3em;" />
+                <MudIconButton Icon="@Icons.Material.Rounded.MoreVert" Color="Color.Default" Size="Size.Small" />
             </ActivatorContent>
             <ChildContent>
                 <MudMenuItem Class="py-1" AutoClose="false">
@@ -35,10 +35,8 @@
             </ChildContent>
         </MudMenu>
     </div>
-
-    <MudStack Row="true" Spacing="1" style="overflow-x:auto; display:inline-block;" Class="px-2 pb-3">
-
-    </MudStack>
+    <MudText Color="Color.Primary" Typo="Typo.h6" Align="Align.Center">Tareas</MudText>
+    <div style="width:3em;"></div>
 </div>
 <div class="mb-5 pb-5">
     @if (PastToDo.Count > 0)
@@ -51,7 +49,7 @@
         <MudCollapse Expanded="pastExpanded" Class="mb-4">
             @foreach (var todo in PastToDo)
             {
-                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass shadow-sm" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
                     <div class="my-auto">
                         <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
                     </div>
@@ -99,7 +97,7 @@
         <MudCollapse Expanded="todayExpanded" Class="mb-4">
             @foreach (var todo in TodayToDo)
             {
-                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass shadow-sm" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
                     <div class="my-auto">
                         <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
                     </div>
@@ -172,7 +170,7 @@
         <MudCollapse Expanded="futureExpanded" Class="mb-4">
             @foreach (var todo in FutureFilter)
             {
-                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass shadow-sm" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
                     <div class="my-auto">
                         <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
                     </div>
@@ -220,14 +218,20 @@
         <MudCollapse Expanded="completedExpanded" Class="mb-3">
             @foreach (var todo in CompletedToday)
             {
-                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
+                <MudPaper Outlined="true" Class="my-2 p-2 py-3 w-100 d-flex hoverclass shadow-sm" Style="flex-direction:row;" @onclick="() => OpenToDo(todo)">
                     <div class="my-auto">
                         <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
                     </div>
                     <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; word-wrap:anywhere;" class="m-0 w-100">@todo.Text</p>
+                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    {
+                        <span class="m-0 mx-3 my-auto p-0">
+                            <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
+                        </span>
+                    }
                     <MudMenu ActivationEvent="MouseEvent.RightClick">
                         <ActivatorContent>
-                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" />
+                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" Disabled="_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count()>0" />
                         </ActivatorContent>
                         <ChildContent>
                             @if (todo.Status != Status.ToDo)
@@ -304,13 +308,6 @@
                 todo.Status = Status.Done;
                 todo.CompletedAt = DateTime.Now;
                 completedExpanded = true;
-                // var subtodos = _conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id));
-                // foreach (var subtodo in subtodos)
-                // {
-                //     subtodo.Status = Status.Done;
-                //     subtodo.Modified = DateTime.UtcNow;
-                //     _conn.Conn.Update(subtodo);
-                // }
             }
         }
         else
@@ -320,6 +317,16 @@
             {
                 completedExpanded = true;
                 todo.CompletedAt = DateTime.Now;
+            }
+        }
+        if (todo.Status == Status.Done)
+        {
+            var subtodos = _conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id));
+            foreach (var subtodo in subtodos)
+            {
+                subtodo.Status = Status.Done;
+                subtodo.Modified = DateTime.UtcNow;
+                _conn.Conn.Update(subtodo);
             }
         }
         _conn.Conn.Update(todo);
@@ -366,7 +373,11 @@
                 MaxWidth = MaxWidth.ExtraSmall,
                 FullWidth = true
             };
-        await DialogService.ShowAsync<ViewSubTodos>("Subtareas", parameters, options);
+        var dialog = await DialogService.ShowAsync<ViewSubTodos>("Subtareas", parameters, options);
+        await dialog.Result;
+        ListToDo = _conn.GetToDos();
+        Recargar();
+        StateHasChanged();
     }
 
     private void FilterByName()

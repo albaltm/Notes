@@ -60,7 +60,7 @@
                         <MudText>Editar perfil</MudText>
                     </MudMenuItem>
                     <MudMenuItem OnTouch="CerrarSesion" OnClick="CerrarSesion">
-                        <MudText>Salir</MudText> @* exittoapp icon*@
+                        <MudText>Cerrar sesión</MudText>
                     </MudMenuItem>
                 </MudMenu>
             </MudAppBar>
@@ -68,7 +68,7 @@
                 <MudNavMenu Rounded="true" Color="Color.Primary">
                     <MudNavLink Match="NavLinkMatch.All" Href="/library" ForceLoad="true" Class="mt-4"><MudIcon Icon="@Icons.Material.Rounded.Book" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Biblioteca</MudText></MudNavLink>
                     <MudNavLink Match="NavLinkMatch.All" Href="/to-do" ForceLoad="true"><MudIcon Icon="@Icons.Material.Rounded.Checklist" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Tareas</MudText></MudNavLink>
-                    <MudNavLink Match="NavLinkMatch.All"><MudIcon Icon="@Icons.Material.Rounded.Autorenew" Class="me-2 my-1 text-muted" /> <MudText Class="text-muted d-inline">Hábitos</MudText></MudNavLink>
+                    <MudNavLink Match="NavLinkMatch.All" Href="/routines" ForceLoad="true"><MudIcon Icon="@Icons.Material.Rounded.Autorenew" Class="me-2 my-1 text-muted" /> <MudText Class="text-muted d-inline">Rutinas</MudText></MudNavLink>
                     <MudNavLink Match="NavLinkMatch.All" Href="/calendar" ForceLoad="true"><MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2 my-1 text-muted" /> <MudText class="text-muted d-inline">Calendario</MudText></MudNavLink>
                 </MudNavMenu>
             </MudDrawer>
@@ -172,14 +172,21 @@
 
     public async void CerrarSesion()
     {
-        _conn.Vaciar();
         try
         {
-            FirebaseClient client = new FirebaseClient(FirebasePath);
-            var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-            await client.Child("userauthentication").Child(token).DeleteAsync();
+            _conn.Vaciar();
         }
-        catch { }
+        catch { return; }
+        var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        if (token.Equals("guest"))
+        {
+            try
+            {
+                FirebaseClient client = new FirebaseClient(FirebasePath);
+                await client.Child("userauthentication").Child(token).DeleteAsync();
+            }
+            catch { }
+        }
         await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", "");
         NavigationManager.NavigateTo("/");
     }

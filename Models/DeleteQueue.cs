@@ -24,5 +24,7 @@ namespace AppNotes.Models
         Event = 2,
         Todo = 3,
         SubToDo = 4,
+        Routine = 5,
+        RoutineRegistry = 6
     }
 }

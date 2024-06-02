@@ -1,0 +1,166 @@
+﻿@using AppNotes.Components.Pages
+@using AppNotes.Services
+@inject IDialogService DialogService
+@inject IJSRuntime JsRuntime;
+@inject ToDoService ToDoService
+@inject SynchronizationService SynchronizationService
+@inject NavigationManager NavigationManager
+@inject ConexionBBDD _conn
+@inherits Global
+
+<MudDialog>
+    <DialogContent>
+        <div class="px-sm-5 pb-4">
+            @if (Routine != null)
+            {
+                <div class="d-flex">
+                    <span class="d-flex mx-auto">
+                        <span style="color:@Routine.Color" class="me-4"><MudIcon Icon="@Routine.Icon" Size="Size.Small" /></span>
+                        <MudText Style="max-width:20em;">@Routine.Text</MudText>
+                    </span>
+                </div>
+                <MudDatePicker Date="Registry.Start" ReadOnly />
+                <MudTextField @bind-Value="Note" Immediate AutoGrow Placeholder="Nota" Variant="MudBlazor.Variant.Outlined" MaxLines="3" Lines="2" Class="mt-4 mb-2"/>
+                @if (Routine.Evaluation == EvaluationType.Completed)
+                {
+                    <MudRadioGroup @bind-Value="Status" ReadOnly="Registry.Start > DateTime.Today">
+                        <MudRadio Value="Status.ToDo" Color="Color.Primary" Class="d-block py-0">Fallado</MudRadio>
+                        <MudRadio Value="Status.Done" Color="Color.Primary" Class="d-block py-0">Conseguido</MudRadio>
+                    </MudRadioGroup>
+                }
+                else if (Routine.Evaluation == EvaluationType.Amount)
+                {
+                    <div class="d-flex my-5 py-3">
+                        <div class="mx-auto d-flex" style="height:2em;">
+                            <MudIconButton Icon="@Icons.Material.Rounded.Remove" OnClick="LessAmount" Disabled="Registry.Amount==0 || Registry.Start > DateTime.Today" Style="width:1em;"></MudIconButton>
+                            <MudNumericField @bind-Value="Amount" Class="mx-4" Style="width:2.5em; height:2em; margin-top:-0.7em;" HideSpinButtons Disabled="Registry.Start > DateTime.Today" />
+                            <MudIconButton Icon="@Icons.Material.Rounded.Add" OnClick="AddAmount" Style="width:1em;" Disabled="Registry.Start > DateTime.Today"></MudIconButton>
+                        </div>
+                    </div>
+                }
+                <div class="text-center mt-3">
+                    <MudButton OnClick="GoToHabit" Class="mx-auto" Variant="MudBlazor.Variant.Filled">Ver rutina</MudButton>
+                    <MudIconButton OnClick="GoToStats" Class="mx-auto" Icon="@Icons.Material.Rounded.BarChart" Color="Color.Primary" Variant="MudBlazor.Variant.Filled" />
+                </div>
+            }
+        </div>
+    </DialogContent>
+</MudDialog>
+@code {
+    string token;
+
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter]
+    public RoutineRegistry Registry { get; set; }
+    Routine Routine { get; set; }
+
+    private string Note
+    {
+        get { return Registry.Note; }
+        set
+        {
+            Registry.Note = value;
+            Registry.Modified = DateTime.UtcNow;
+            _conn.Conn.Update(Registry);
+        }
+    }
+    private Status Status
+    {
+        get { return Registry.Status; }
+        set
+        {
+            Registry.Status = value;
+            Registry.Modified = DateTime.UtcNow;
+            _conn.Conn.Update(Registry);
+        }
+    }
+    private double Amount
+    {
+        get { return Registry.Amount; }
+        set
+        {
+            Registry.Amount = value;
+            if (Routine.AmountModifier == AmountModifier.NoGoal)
+            {
+                if (Registry.Amount == 0)
+                {
+                    Registry.Status = Status.ToDo;
+                }
+                else
+                {
+                    Registry.Status = Status.Done;
+                }
+            }
+            if (Routine.AmountModifier == AmountModifier.Minimum)
+            {
+                if (Registry.Amount == 0)
+                {
+                    Registry.Status = Status.ToDo;
+                }
+                else if (Registry.Amount < Routine.Goal)
+                {
+                    Registry.Status = Status.InProgress;
+                }
+                else
+                {
+                    Registry.Status = Status.Done;
+                }
+            }
+            if (Routine.AmountModifier == AmountModifier.Exact)
+            {
+                if (Registry.Amount == 0 || Registry.Amount > Routine.Goal)
+                {
+                    Registry.Status = Status.ToDo;
+                }
+                else if (Registry.Amount == Routine.Goal)
+                {
+                    Registry.Status = Status.Done;
+                }
+                else
+                {
+                    Registry.Status = Status.InProgress;
+                }
+            }
+            if (Routine.AmountModifier == AmountModifier.Maximum)
+            {
+                if (Registry.Amount <= Routine.Goal)
+                {
+                    Registry.Status = Status.Done;
+                }
+                else
+                {
+                    Registry.Status = Status.ToDo;
+                }
+            }
+
+            Registry.Modified = DateTime.UtcNow;
+            _conn.Conn.Update(Registry);
+        }
+    }
+
+    protected async override void OnInitialized()
+    {
+        base.OnInitialized();
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        Routine = _conn.GetRoutine(Registry.Routine);
+        StateHasChanged();
+    }
+
+    private void AddAmount()
+    {
+        Amount = Registry.Amount + 1;
+    }
+    private void LessAmount()
+    {
+        Amount = Registry.Amount - 1;
+    }
+
+    private void GoToHabit()
+    {
+        NavigationManager.NavigateTo($"/editroutine/{Routine.Id}");
+    }
+    private void GoToStats()
+    {
+        NavigationManager.NavigateTo($"/routinestats/{Routine.Id}");
+    }
+}

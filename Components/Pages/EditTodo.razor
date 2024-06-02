@@ -59,6 +59,14 @@
 
             <MudTextField @bind-Value="ToDoItem.Description" AutoGrow Placeholder="Descripción" Variant="MudBlazor.Variant.Outlined" MaxLines="5" Lines="3" Style="margin: 1.5em 0;"></MudTextField>
 
+            @if (Id != null)
+            {
+                <div class="d-flex justify-content-between">
+                    <MudText>Progreso</MudText>
+                    <MudIconButton OnClick="() => ToggleDone(null)" Icon="@(ToDoItem.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : ToDoItem.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" Disabled="SubTodos.Count()>0" />
+                </div>
+            }
+
             <div class="justify-content-between expandable hoverclass p-2 mud-theme-primary" @onclick="@(() => subTodoExpanded = !subTodoExpanded)">
                 <MudText>Subtareas</MudText>
                 <MudIcon Icon="@(subTodoExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" />
@@ -296,6 +304,7 @@
             subtodo.Modified = DateTime.UtcNow;
             if (subtodo.Id == null)
             {
+                subtodo.Id = Guid.NewGuid().ToString();
                 subtodo.ToDo = ToDoItem.Id;
                 subtodo.User = ToDoItem.User;
                 await ToDoService.CreateSubToDo(token, FirebasePath, subtodo);
@@ -311,10 +320,38 @@
             ToDoService.DeleteSubToDo(token, FirebasePath, subtodo);
         }
 
+        if (SubTodos.Count() > 0)
+        {
+            bool progress = false;
+            bool allDone = true;
+            foreach (var subtodo in SubTodos)
+            {
+                if (subtodo.Status != Status.ToDo) { progress = true; }
+                if (subtodo.Status != Status.Done) { allDone = false; }
+            }
+
+            if (!progress && !allDone)
+            {
+                ToDoItem.Status = Status.ToDo;
+                ToDoItem.CompletedAt = null;
+            }
+            else if (progress)
+            {
+                ToDoItem.Status = Status.InProgress;
+                ToDoItem.CompletedAt = null;
+            }
+            else if (allDone)
+            {
+                ToDoItem.Status = Status.Done;
+                ToDoItem.CompletedAt = DateTime.UtcNow;
+            }
+        }
+
+        _conn.GetConnection().Update(ToDoItem);
+
         if (exit)
         {
             await JSRuntime.InvokeVoidAsync("history.back");
-            //NavigationManager.NavigateTo("/to-do", true);
         }
     }
 
@@ -348,6 +385,28 @@
     {
         SubTodos.Remove(subtodo);
         if (subtodo.Id != null) { SubTodosToRemove.Add(subtodo); }
+    }
+
+    private void ToggleDone(Status? status)
+    {
+        ToDoItem.Modified = DateTime.UtcNow;
+        if (status == null)
+        {
+            if (ToDoItem.Done)
+            {
+                ToDoItem.Status = Status.ToDo;
+            }
+            else
+            {
+                ToDoItem.Status = Status.Done;
+            }
+        }
+        else
+        {
+            ToDoItem.Status = status.Value;
+        }
+        if (ToDoItem.Done) { ToDoItem.CompletedAt = DateTime.Now; }
+        else { ToDoItem.CompletedAt = null; }
     }
 
     private void ToggleDone(SubToDo subtodo, Status? status)

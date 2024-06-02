@@ -1,0 +1,425 @@
+﻿@page "/editroutine"
+@page "/editroutine/{Id}"
+@using AppNotes.Components.Components
+@using AppNotes.Components.Layout
+@using AppNotes.Components.Pages
+@using AppNotes.Services
+@using Firebase.Database
+@using Firebase.Database.Query
+@inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject SynchronizationService SynchronizationService
+@inject ToDoService ToDoService
+@inject ISnackbar Snackbar
+@inherits Global
+
+<style>
+    .expandable {
+        display: flex;
+        border-radius: 4px 4px 0 0;
+    }
+
+    .hoverclass:hover {
+        background-color: rgba(123, 123, 123, 0.1);
+        cursor: pointer;
+    }
+
+    #picker {
+        max-width: 70vw;
+        overflow: auto;
+    }
+</style>
+<div class="d-flex justify-content-between">
+    <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="GoBack" />
+    @if (Id != null)
+    {
+        <MudIconButton Icon="@Icons.Material.Rounded.BarChart" Color="Color.Primary" Variant="MudBlazor.Variant.Filled" Size="Size.Small" Style="width:3em;" OnClick="GoToStatistics" />
+    }
+</div>
+
+<div class="pb-4">
+    @if (Routine != null)
+    {
+        <MudForm @ref="form">
+            <div class="row" style="margin: 1.5em 0;">
+                <div class="col p-0 d-inline-block position-relative" style="height:3.5em; font-size: 0.9em;">
+                    @if (!Routine.Color.Equals("inherit"))
+                    {
+                        <MudIconButton Class="position-absolute bottom-0 end-0" Style="margin-right:2.1em; margin-bottom:0.4em;" Size="Size.Small" Icon="@Icons.Material.Rounded.Delete" OnClick="@(() => Routine.Color = "inherit")"></MudIconButton>
+                    }
+                    <div class=" position-absolute bottom-0 end-0" style="width:3em; height:3em; background-color: @Routine.Color; border-radius: 3px;">
+                        @if (Routine.Color.Equals("inherit"))
+                        {
+                            <MudIcon Icon="@Icons.Material.Rounded.Palette" Class="ms-2 mt-1" />
+                        }
+                    </div>
+                    <MudColorPicker @bind-Text="Routine.Color" AdornmentIcon="" Class="position-absolute bottom-0 end-0" style="width:2.4em; color:transparent;" ColorPickerView="ColorPickerView.GridCompact" PickerVariant="PickerVariant.Dialog" />
+                </div>
+                <div class="col d-inline-block pt-2" id="picker"><IconPicker @bind-Icon="@Routine.Icon" /></div>
+            </div>
+            <MudTextField @bind-Value="Routine.Text" Immediate Placeholder="Título" Style="display:inline-block; margin: 0.8em 0;" Required="true" RequiredError="Campo obligatorio" />
+
+            <MudTextField @bind-Value="Routine.Description" Immediate AutoGrow Placeholder="Descripción" Variant="MudBlazor.Variant.Outlined" MaxLines="5" Lines="3" Style="margin: 1.5em 0;"></MudTextField>
+
+            <div class="d-flex justify-content-between" style="margin: 1.5em 0;">
+                <MudText>Prioridad</MudText>
+                <div>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Remove" Size="Size.Small" OnClick="() => Routine.Priority--" Disabled="Routine.Priority==-10"></MudIconButton>
+                    <span class="mx-2">@Routine.Priority</span>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Add" Size="Size.Small" OnClick="() => Routine.Priority++" Disabled="Routine.Priority==10"></MudIconButton>
+                </div>
+            </div>
+
+            <div class="mb-4 w-100">
+                <MudText Class="fw-bold">Evaluación</MudText>
+                <MudRadioGroup @bind-Value="Routine.Evaluation">
+                    <MudRadio Value="@EvaluationType.Completed" Color="Color.Primary">Si / No</MudRadio>
+                    <MudRadio Value="@EvaluationType.Amount" Color="Color.Primary">Cantidad</MudRadio>
+                </MudRadioGroup>
+                @if (Routine.Evaluation == EvaluationType.Amount)
+                {
+                    <div style="width:15em;" class="d-block d-sm-inline-block pt-1 me-5">
+                        <MudSelect @bind-Value="Routine.AmountModifier" Class="m-0 d-block d-sm-inline-block" Variant="MudBlazor.Variant.Text" AnchorOrigin="Origin.BottomCenter">
+                            <MudSelectItem Value="AmountModifier.NoGoal">Sin objetivo</MudSelectItem>
+                            <MudSelectItem Value="AmountModifier.Minimum">Mínimo</MudSelectItem>
+                            <MudSelectItem Value="AmountModifier.Exact">Exactamente</MudSelectItem>
+                            <MudSelectItem Value="AmountModifier.Maximum">Máximo</MudSelectItem>
+                        </MudSelect>
+                    </div>
+
+                    @if (Routine.AmountModifier != AmountModifier.NoGoal)
+                    {
+                        <MudNumericField HideSpinButtons Min="0.1" Style="width:4em;" Class="d-inline-block mx-auto mx-sm-2" @bind-Value="Routine.Goal" />
+                        <MudTextField Placeholder="Unidad" @bind-Value="@Routine.EvaluationText" Class="d-inline-block mx-auto mx-sm-0" Style="min-width:15em;" />
+                    }
+                }
+            </div>
+            
+
+
+            <MudText Class="mt-5 fw-bold">Frecuencia</MudText>
+            <MudRadioGroup @bind-Value="@frequency">
+                <MudRadio Value="0" Color="Color.Primary" Class="d-block">Todos los días</MudRadio>
+                <MudRadio Value="1" Color="Color.Primary" Class="d-block">Algunos días por semana</MudRadio>
+                @if (Routine.Frequency == FrequencyType.DaysOfWeek || Routine.Frequency == FrequencyType.FlexibleWeek)
+                {
+                    <MudCheckBox @bind-Value="@flexibleWeek" Color="Color.Primary" Size="Size.Small">Flexible</MudCheckBox>
+                    @if (Routine.Frequency == FrequencyType.DaysOfWeek)
+                    {
+                        <div class="text-center" style="max-width: fit-content;">
+                            <MudButton OnClick="() => weekdays[0] = !weekdays[0]" Variant="weekdays[0] ? MudBlazor.Variant.Filled : MudBlazor.Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mx-auto mb-2">L</MudButton>
+                            <MudButton OnClick="() => weekdays[1] = !weekdays[1]" Variant="weekdays[1] ? MudBlazor.Variant.Filled : MudBlazor.Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mx-auto mb-2">M</MudButton>
+                            <MudButton OnClick="() => weekdays[2] = !weekdays[2]" Variant="weekdays[2] ? MudBlazor.Variant.Filled : MudBlazor.Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mx-auto mb-2">X</MudButton>
+                            <MudButton OnClick="() => weekdays[3] = !weekdays[3]" Variant="weekdays[3] ? MudBlazor.Variant.Filled : MudBlazor.Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mx-auto mb-2">J</MudButton>
+                            <MudButton OnClick="() => weekdays[4] = !weekdays[4]" Variant="weekdays[4] ? MudBlazor.Variant.Filled : MudBlazor.Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mx-auto mb-2">V</MudButton>
+                            <MudButton OnClick="() => weekdays[5] = !weekdays[5]" Variant="weekdays[5] ? MudBlazor.Variant.Filled : MudBlazor.Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mx-auto mb-2">S</MudButton>
+                            <MudButton OnClick="() => weekdays[6] = !weekdays[6]" Variant="weekdays[6] ? MudBlazor.Variant.Filled : MudBlazor.Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="mx-auto mb-2">D</MudButton>
+                        </div>
+                    }
+                    else if (Routine.Frequency == FrequencyType.FlexibleWeek)
+                    {
+                        <div class="d-flex pt-3 mb-3">
+                            <div class="px-5">
+                                <MudIconButton Icon="@Icons.Material.Rounded.Remove" Size="Size.Small" OnClick="() => Routine.Period--" Disabled="Routine.Goal==1"></MudIconButton>
+                                <span class="mx-1">@Routine.Period</span>
+                                <MudIconButton Icon="@Icons.Material.Rounded.Add" Size="Size.Small" OnClick="() => Routine.Period++"></MudIconButton>
+                            </div>
+                            <MudText Class="m-0">veces por semana</MudText>
+                        </div>
+                    }
+                }
+                <MudRadio Value="2" Color="Color.Primary" Class="d-block">Periodo</MudRadio>
+                @if (Routine.Frequency == FrequencyType.Personalized || Routine.Frequency == FrequencyType.Periods)
+                {
+                    <MudCheckBox @bind-Value="@flexiblePeriod" Color="Color.Primary" Size="Size.Small">Flexible</MudCheckBox>
+                    @if (Routine.Frequency == FrequencyType.Personalized)
+                    {
+                        <div style="height:2em; width:fit-content;">
+                            <MudText Class="d-inline-block">Cada</MudText>
+                            <MudNumericField @bind-Value="Routine.Period" Min="2" Style="width:4em; height:1.3em; margin-top:-0.2em;" Class="mx-4 d-inline-block" HideSpinButtons />
+                            <MudText Class="d-inline-block">días</MudText>
+                        </div>
+                    }
+                    else if (Routine.Frequency == FrequencyType.Periods)
+                    {
+                        <div style="width:fit-content;">
+                            <MudNumericField @bind-Value="Routine.Period" Min="1" Label="Actividad" Style="width:4em;" Class="mx-4 d-inline-block" HideSpinButtons />
+                            <MudText Class="d-inline-block pt-5">x</MudText>
+                            <MudNumericField @bind-Value="Routine.Rest" Min="1" Label="Descanso" Style="width:4em;" Class="mx-4 d-inline-block" HideSpinButtons />
+                        </div>
+                    }
+                }
+            </MudRadioGroup>
+
+            <div class="d-flex" style="margin-top: 2.5em;">
+                <MudIcon Icon="@(Routine.AddToCalendar ? Icons.Material.Rounded.CheckBox : Icons.Material.Rounded.CheckBoxOutlineBlank)" @onclick="() => Routine.AddToCalendar = !Routine.AddToCalendar" Class="me-2" />
+                <MudText>Añadir al calendario</MudText>
+            </div>
+        </MudForm>
+
+        <div class="d-flex" style="margin-top: 1.5em;">
+            @if (Id != null)
+            {
+                <div class="mx-auto">
+                    <MudButton OnClick="DeleteRoutine" class="small me-2 me-sm-5">Eliminar</MudButton>
+                    <MudButton OnClick="() => SaveRoutine()" class="small ms-2 ms-sm-5" Color="Color.Primary" Variant="MudBlazor.Variant.Filled">Guardar</MudButton>
+                </div>
+            }
+            else
+            {
+                <MudButton OnClick="() => SaveRoutine()" class="small mx-auto" Color="Color.Primary" Variant="MudBlazor.Variant.Filled">Guardar</MudButton>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    private MudForm form;
+    private MudColorPicker pickericono;
+
+    private Routine Routine { get; set; }
+
+    private string token;
+    private int frequency
+    {
+        get 
+        {
+            if (Routine.Frequency == FrequencyType.Everyday) { return 0; }
+            else if (Routine.Frequency == FrequencyType.DaysOfWeek || Routine.Frequency == FrequencyType.FlexibleWeek) return 1;
+            return 2;
+        }
+        set
+        {
+            if (value == 0)
+            {
+                Routine.Frequency = FrequencyType.Everyday;
+            }
+            else if (value == 1)
+            {
+                Routine.Frequency = FrequencyType.DaysOfWeek;
+            }
+            else
+            {
+                Routine.Frequency = FrequencyType.Personalized;
+            }
+        }
+    }
+    bool[] weekdays { get; set; } = new bool[7];
+    bool flexibleWeek
+    {
+        get { return Routine.Frequency == FrequencyType.FlexibleWeek; }
+        set
+        {
+            if ( value == true)
+            {
+                Routine.Frequency = FrequencyType.FlexibleWeek;
+            }
+            else
+            {
+                Routine.Frequency = FrequencyType.DaysOfWeek;
+            }
+        }
+    }
+    bool flexiblePeriod
+    {
+        get { return Routine.Frequency == FrequencyType.Periods; }
+        set
+        {
+            if (value == true)
+            {
+                Routine.Frequency = FrequencyType.Periods;
+            }
+            else
+            {
+                Routine.Frequency = FrequencyType.Personalized;
+            }
+        }
+    }
+
+    protected async override Task OnInitializedAsync()
+    {
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            Routine = new Routine()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    User = token,
+                    Modified = DateTime.UtcNow,
+                };
+        }
+        else
+        {
+            SynchronizationService.TrySyncRoutines(token);
+            Routine = _conn.GetRoutine(Id);
+        }
+        var days = Routine.DaysOfWeek.Split(';');
+        for (int i = 0; i < days.Length; i++)
+        {
+            weekdays[i] = bool.Parse(days[i]);
+        }
+    }
+
+    private async Task SaveRoutine()
+    {
+        await form.Validate();
+        if (!form.IsValid) { return; }
+
+        if (Routine.Frequency == FrequencyType.DaysOfWeek)
+        {
+            var valid = false;
+            foreach (var day in weekdays)
+            {
+                if (day == true) valid = true;
+            }
+            if (!valid)
+            {
+                Snackbar.Add("Elige al menos un día de la semana", Severity.Error);
+                return;
+            }
+        }
+
+        if (Id == null)
+        {
+            Routine.Modified = DateTime.UtcNow;
+            if (Routine.Evaluation == EvaluationType.Completed)
+            {
+                Routine.AmountModifier = AmountModifier.NoGoal;
+                Routine.Goal = 0;
+            }
+            if (Routine.Evaluation != EvaluationType.Amount)
+            {
+                Routine.EvaluationText = "";
+            }
+            if (Routine.Frequency != FrequencyType.DaysOfWeek)
+            {
+                Routine.DaysOfWeek = "False;False;False;False;False;False;False";
+            }
+            if (Routine.Frequency != FrequencyType.FlexibleWeek && Routine.Frequency != FrequencyType.Personalized && Routine.Frequency != FrequencyType.Periods)
+            {
+                Routine.Period = 0;
+            }
+            if (Routine.Frequency != FrequencyType.Periods)
+            {
+                Routine.Rest = 0;
+            }
+
+            if (Routine.Frequency == FrequencyType.DaysOfWeek)
+            {
+                var cad = "";
+                for (int i = 0; i<weekdays.Length; i++)
+                {
+                    cad += weekdays[i];
+                    if (i != weekdays.Length - 1) { cad += ";"; }
+                }
+                Routine.DaysOfWeek = cad;
+            }
+            await ToDoService.CreateRoutine(token, FirebasePath, Routine);
+        }
+        else
+        {
+            var savedRoutine = _conn.GetRoutine(Id);
+            if (Routine.Evaluation != savedRoutine.Evaluation || Routine.Frequency != savedRoutine.Frequency ||
+                (savedRoutine.Evaluation == EvaluationType.Amount && savedRoutine.AmountModifier != Routine.AmountModifier) ||
+                (savedRoutine.Frequency == FrequencyType.DaysOfWeek && DaysChanged()) ||
+                ((savedRoutine.Frequency == FrequencyType.FlexibleWeek || savedRoutine.Frequency == FrequencyType.Personalized || savedRoutine.Frequency == FrequencyType.Periods) && savedRoutine.Goal != Routine.Goal) ||
+                (savedRoutine.Frequency == FrequencyType.Periods && savedRoutine.Rest != Routine.Rest))
+            {
+                bool? result = await DialogService.ShowMessageBox(
+                "Modificar",
+                "¿Seguro que quieres modificar esta rutina? Esta acción eliminará las estadísticas actuales",
+                yesText: "Si", noText: "Cancelar");
+                if (result != true)
+                {
+                    return;
+                }
+                var registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Routine.Id));
+                foreach (var registry in registries)
+                {
+                    ToDoService.DeleteRoutineRegistry(token, FirebasePath, registry);
+                }
+                if (Routine.Evaluation == EvaluationType.Completed)
+                {
+                    Routine.AmountModifier = AmountModifier.NoGoal;
+                    Routine.Goal = 0;
+                }
+                if (Routine.Evaluation != EvaluationType.Amount)
+                {
+                    Routine.EvaluationText = "";
+                }
+                if (Routine.Frequency != FrequencyType.DaysOfWeek)
+                {
+                    Routine.DaysOfWeek = "False;False;False;False;False;False;False";
+                }
+                if (Routine.Frequency != FrequencyType.FlexibleWeek && Routine.Frequency != FrequencyType.Personalized && Routine.Frequency != FrequencyType.Periods)
+                {
+                    Routine.Period = 0;
+                }
+                if (Routine.Frequency != FrequencyType.Periods)
+                {
+                    Routine.Rest = 0;
+                }
+
+                if (Routine.Frequency == FrequencyType.DaysOfWeek)
+                {
+                    var cad = "";
+                    for (int i = 0; i < weekdays.Length; i++)
+                    {
+                        cad += weekdays[i];
+                        if (i != weekdays.Length - 1) { cad += ";"; }
+                    }
+                    Routine.DaysOfWeek = cad;
+                }
+                Routine.Start = DateTime.Today;
+            }
+            else
+            {
+                Routine.Evaluation = savedRoutine.Evaluation;
+            }
+
+            Routine.Modified = DateTime.UtcNow;
+            _conn.GetConnection().Update(Routine);
+        }
+        await GoBack();
+    }
+
+    private bool DaysChanged()
+    {
+        var savedDays = _conn.GetRoutine(Id).DaysOfWeek;
+        var cad = "";
+        for (int i = 0; i < weekdays.Length; i++)
+        {
+            cad += weekdays[i];
+            if (i != weekdays.Length - 1) { cad += ";"; }
+        }
+        return !savedDays.Equals(cad);
+    }
+
+    private async void DeleteRoutine()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Eliminar",
+            "¿Seguro que quieres eliminar esta rutina?",
+            yesText: "Si", noText: "Cancelar");
+        if (result == true)
+        {
+            await ToDoService.DeleteRoutine(token, FirebasePath, Routine);
+            NavigationManager.NavigateTo("/routines", true);
+        }
+    }
+
+    private async Task GoBack()
+    {
+        await JSRuntime.InvokeVoidAsync("history.back");
+    }
+
+    private void GoToStatistics()
+    {
+        NavigationManager.NavigateTo($"/routinestats/{Id}");
+    }
+}

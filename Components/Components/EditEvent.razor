@@ -254,7 +254,14 @@
 
     private async void DeleteEvent()
     {
-        await EventService.DeleteEvent(token, FirebasePath, Event);
-        Close();
+        bool? result = await DialogService.ShowMessageBox(
+            "Eliminar",
+            "¿Seguro que quieres eliminar este evento?",
+            yesText: "Confirmar", noText: "Cancelar");
+        if (result == true)
+        {
+            await EventService.DeleteEvent(token, FirebasePath, Event);
+            Close();
+        }
     }
 }

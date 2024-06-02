@@ -32,6 +32,7 @@ namespace AppNotes
             builder.Services.AddSingleton<LibraryService>();
             builder.Services.AddSingleton<EventService>();
             builder.Services.AddSingleton<ToDoService>();
+            builder.Services.AddSingleton<RoutineService>();
 
             return builder.Build();
         }

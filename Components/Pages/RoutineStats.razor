@@ -1,0 +1,355 @@
+﻿@page "/routinestats/{Id}"
+@using AppNotes.Components.Components
+@using AppNotes.Services
+@inject ConexionBBDD _conn
+@inject ToDoService ToDoService
+@inject RoutineService RoutineService
+@inject NavigationManager NavigationManager
+@inject SynchronizationService SynchronizationService
+@inject IJSRuntime JsRuntime
+@inject IDialogService DialogService
+@inherits Global
+
+<style>
+    .hoverclass:hover {
+        background-color: rgba(123, 123, 123, 0.1);
+        cursor: pointer;
+    }
+    .fallido{
+        color: rgba(190, 0, 0, 0.7) !important;
+    }
+    .intentado{
+        color: rgba(0, 77, 190, 0.7) !important;
+    }
+    .conseguido{
+        color: rgba(2, 190, 0, 0.7) !important;
+    }
+</style>
+
+<div class="d-flex justify-content-between">
+    <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="GoBack" Class="flex-shrink-1" />
+    <span class="d-flex my-auto me-3" style="flex-direction:row;">
+        <span class="my-auto" style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;">
+            <MudText Align="Align.Center" Typo="Typo.h6"><span style="color:@Routine.Color;"><MudIcon Icon="@Routine.Icon" Size="Size.Small" /></span> @Routine.Text</MudText>
+        </span>
+    </span>
+    
+    <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Primary" Class="flex-shrink-1" Variant="MudBlazor.Variant.Filled" Size="Size.Small" Style="width:3em;" OnClick="GoToRoutine" />
+</div>
+
+<MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Racha</MudText>
+
+<div class="d-flex justify-space-around w-100" style="height:7em;">
+    <div>
+        <MudText Align="Align.Center" Typo="Typo.h5" Color="Color.Primary" Class="fw-bold">@rachaActual</MudText>
+        <MudText Align="Align.Center">Actual</MudText>
+    </div>
+    <div>
+        <MudText Align="Align.Center" Typo="Typo.h5" Color="Color.Primary" Class="fw-bold">@mejorRacha</MudText>
+        <MudText Align="Align.Center">Mejor</MudText>
+    </div>
+</div>
+
+<MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Conseguido</MudText>
+<MudDivider/>
+<div class="d-flex hoverclass p-2" @onclick="FilterWeek">
+    <MudText Class="flex-grow-1">Esta semana</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisWeek</MudText>
+    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisWeek</MudText>
+</div>
+<MudDivider />
+<div class="d-flex hoverclass p-2" @onclick="FilterMonth">
+    <MudText Class="flex-grow-1">Este mes</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisMonth</MudText>
+    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisMonth</MudText>
+</div>
+<MudDivider />
+<div class="d-flex hoverclass p-2" @onclick="FilterYear">
+    <MudText Class="flex-grow-1">Este año</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisYear</MudText>
+    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisYear</MudText>
+</div>
+<MudDivider />
+<div class="d-flex hoverclass p-2" @onclick="FilterTotal">
+    <MudText Class="flex-grow-1">Total</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completed</MudText>
+    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@total</MudText>
+</div>
+
+@if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
+{
+    <MudChart ChartOptions="@(new() { ChartPalette = new[] { "rgba(66, 255, 201, 0.8)","rgba(162, 77, 255, 0.8)", "rgba(66, 170, 255, 0.8)" } })" ChartType="ChartType.Pie" Width="10em" Height="10em" LegendPosition="Position.Right" InputData="@data" InputLabels="@labels" Style="margin: 4em 0;" />
+}
+@if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
+{
+    <MudChart ChartOptions="@(new() { ChartPalette = new[] { "rgba(66, 255, 201, 0.8)", "rgba(66, 170, 255, 0.8)" } })" ChartType="ChartType.Pie" Width="10em" Height="10em" LegendPosition="Position.Right" InputData="@datafilter" InputLabels="@labelsfilter" Style="margin: 4em 0;" />
+}
+
+<MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Historial</MudText>
+<div class="d-flex">
+    @if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
+    {
+        <MudDatePicker PickerVariant="PickerVariant.Static" Class="mx-auto" IsDateDisabledFunc="@((DateTime dt)=>(dt>DateTime.Today || RoutineService.ShowToday(Routine,dt) == false))"
+                       @bind-Date="SelectedDate" AdditionalDateClassesFunc="@((DateTime dt)=>(Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.ToDo ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.Done ? "conseguido" : (Registries.Where(x => x.Start == dt).FirstOrDefault() == null && RoutineService.ShowToday(Routine,dt) == true) ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.InProgress ? "intentado" : ""))" />
+    }
+    @if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
+    {
+        <MudDatePicker PickerVariant="PickerVariant.Static" Class="mx-auto" IsDateDisabledFunc="@((DateTime dt)=>(dt>DateTime.Today || RoutineService.ShowToday(Routine,dt) == false))"
+                       AdditionalDateClassesFunc="@((DateTime dt)=>(Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.ToDo ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.Done ? "conseguido" : (Registries.Where(x => x.Start == dt).FirstOrDefault() == null && RoutineService.ShowToday(Routine,dt) == true) ? "fallido" : ""))"
+                       @bind-Date="SelectedDate"/>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    private Routine Routine { get; set; }
+    private List<RoutineRegistry> Registries { get; set; }
+    string token;
+    private DateTime selectedDate = DateTime.Today;
+    private DateTime? SelectedDate
+    {
+        get { return selectedDate; }
+        set
+        {
+            if (value != null)
+            {
+                selectedDate = value.Value;
+                var existingRegistry = _conn.GetRoutinesRegistry().Where(x => x.Start == selectedDate && x.Routine.Equals(Routine.Id)).FirstOrDefault();
+                OpenRegistry(existingRegistry);
+            }
+        }
+    }
+
+    private int rachaActual = 0;
+    private int mejorRacha = 0;
+    private int total = 0;
+    private int tried = 0;
+    private int completed = 0;
+    private int thisYear = 0;
+    private int thisMonth = 0;
+    private int thisWeek = 0;
+    private int triedThisYear = 0;
+    private int triedThisMonth = 0;
+    private int triedThisWeek = 0;
+    private int completedThisYear = 0;
+    private int completedThisMonth = 0;
+    private int completedThisWeek = 0;
+
+    public double[] data = { 0, 0, 0 };
+    public string[] labels = { "Conseguido", "Intento", "No conseguido" };
+    public double[] datafilter = { 0, 0 };
+    public string[] labelsfilter = { "Conseguido", "No conseguido" };
+
+    protected async override void OnInitialized()
+    {
+        base.OnInitialized();
+        Routine = _conn.GetRoutine(Id);
+        Registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Id)).OrderBy(x => x.Start).ToList();
+        CalculateStats();
+        FilterTotal();
+
+        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        await SynchronizationService.TrySyncRoutines(token);
+        Registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Id)).OrderBy(x => x.Start).ToList();
+        CalculateStats();
+        // FilterTotal();
+    }
+
+    private void CalculateStats() 
+    {
+        rachaActual = 0;
+        mejorRacha = 0;
+        total = 0;
+        tried = 0;
+        completed = 0;
+        thisYear = 0;
+        thisMonth = 0;
+        thisWeek = 0;
+        triedThisYear = 0;
+        triedThisMonth = 0;
+        triedThisWeek = 0;
+        completedThisYear = 0;
+        completedThisMonth = 0;
+        completedThisWeek = 0;
+        var registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Routine.Id)).ToList();
+        for (var day = Routine.Start; day.Date <= DateTime.Today; day = day.AddDays(1))
+        {
+            if (RoutineService.ShowToday(Routine, day))
+            {
+                total++;
+                if (day.Year == DateTime.Today.Year) { thisYear++; }
+                if (day.Month == DateTime.Today.Month) { thisMonth++; }
+                if (day >= GetFirstDayOfWeek(DateTime.Today) && day <= GetFirstDayOfWeek(DateTime.Today).AddDays(6)) { thisWeek++; }
+                var registry = registries.Where(x => x.Start == day).FirstOrDefault();
+                if (registry != null)
+                {
+                    if (Routine.Evaluation == EvaluationType.Amount)
+                    {
+                        if (registry.Status == Status.InProgress)
+                        {
+                            tried++;
+                            if (day.Year == DateTime.Today.Year) { triedThisYear++; }
+                            if (day.Month == DateTime.Today.Month) { triedThisMonth++; }
+                            if (day >= GetFirstDayOfWeek(DateTime.Today) && day <= GetFirstDayOfWeek(DateTime.Today).AddDays(6)) { triedThisWeek++; }
+                            rachaActual = 0;
+                        }
+                    }
+                    if (registry.Status == Status.Done)
+                    {
+                        rachaActual++;
+                        completed++;
+                        if (rachaActual > mejorRacha) { mejorRacha = rachaActual; }
+                        if (day.Year == DateTime.Today.Year) { completedThisYear++; }
+                        if (day.Month == DateTime.Today.Month) { completedThisMonth++; }
+                        if (day >= GetFirstDayOfWeek(DateTime.Today) && day <= GetFirstDayOfWeek(DateTime.Today).AddDays(6)) { completedThisWeek++; }
+                    }
+                }
+                else
+                {
+                    rachaActual = 0;
+                }
+            }
+        }
+    }
+
+    private DateTime GetFirstDayOfWeek(DateTime day)
+    {
+        var diff = (int)day.DayOfWeek - 1;
+
+        if (diff < 0)
+            diff += 7;
+
+        return day.AddDays(-diff).Date;
+    }
+
+    private void FilterWeek()
+    {
+        if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
+        {
+            data[0] = completedThisWeek;
+            data[1] = triedThisWeek;
+            data[2] = thisWeek - triedThisWeek - completedThisWeek;
+            labels[0] = $"{completedThisWeek}  conseguido";
+            labels[1] = $"{triedThisWeek} {(triedThisWeek == 1 ? "intento" : "intentos")}";
+            labels[2] = $"{thisWeek - triedThisWeek - completedThisWeek}  no conseguido";
+        }
+        if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
+        {
+            datafilter[0] = completedThisWeek;
+            datafilter[1] = thisWeek - completedThisWeek;
+            labelsfilter[0] = $"{completedThisWeek}  conseguido";
+            labelsfilter[1] = $"{thisWeek - completedThisWeek}  no conseguido";
+        }
+    }
+    private void FilterMonth()
+    {
+        if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
+        {
+            data[0] = completedThisMonth;
+            data[1] = triedThisMonth;
+            data[2] = thisMonth - triedThisMonth - completedThisMonth;
+            labels[0] = $"{completedThisMonth}  conseguido";
+            labels[1] = $"{triedThisMonth} {(triedThisMonth == 1 ? "intento" : "intentos")}";
+            labels[2] = $"{thisMonth - triedThisMonth - completedThisMonth}  no conseguido";
+        }
+        if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
+        {
+            datafilter[0] = completedThisMonth;
+            datafilter[1] = thisMonth - completedThisMonth;
+            labelsfilter[0] = $"{completedThisMonth}  conseguido";
+            labelsfilter[1] = $"{thisMonth - completedThisMonth}  no conseguido";
+        }
+    }
+    private void FilterYear()
+    {
+        if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
+        {
+            data[0] = completedThisYear;
+            data[1] = triedThisYear;
+            data[2] = thisYear - triedThisYear - completedThisYear;
+            labels[0] = $"{completedThisYear}  conseguido";
+            labels[1] = $"{triedThisYear} {(triedThisYear == 1 ? "intento" : "intentos")}";
+            labels[2] = $"{thisYear - triedThisYear - completedThisYear}  no conseguido";
+        }
+        if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
+        {
+            datafilter[0] = completedThisYear;
+            datafilter[1] = thisYear - completedThisYear;
+            labelsfilter[0] = $"{completedThisYear}  conseguido";
+            labelsfilter[1] = $"{thisYear - completedThisYear}  no conseguido";
+        }
+    }
+    private void FilterTotal()
+    {
+        if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
+        {
+            data[0] = completed;
+            data[1] = tried;
+            data[2] = total - tried - completed;
+            labels[0] = $"{completed}  conseguido";
+            labels[1] = $"{tried} {(tried == 1 ? "intento" : "intentos")}";
+            labels[2] = $"{total - tried - completed}  no conseguido";
+        }
+        if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
+        {
+            datafilter[0] = completed;
+            datafilter[1] = total - completed;
+            labelsfilter[0] = $"{completed}  conseguido";
+            labelsfilter[1] = $"{total - completed}  no conseguido";
+        }
+    }
+
+    private async void OpenRegistry(RoutineRegistry? registry)
+    {
+        if (registry == null)
+        {
+            registry = new RoutineRegistry()
+                {
+                    Routine = Routine.Id,
+                    User = Routine.User,
+                    Color = Routine.Color,
+                    Text = Routine.Text,
+                    Icon = Routine.Icon,
+                    Start = SelectedDate.Value
+                };
+            var id = await ToDoService.CreateRoutineRegistry(token, FirebasePath, registry);
+            registry = _conn.GetRoutineRegistry(id);
+        }
+        else
+        {
+            var existingRegistry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(registry.Routine)).FirstOrDefault();
+            if (existingRegistry == null)
+            {
+                var id = await ToDoService.CreateRoutineRegistry(token, FirebasePath, registry);
+                registry = _conn.GetRoutineRegistry(id);
+            }
+        }
+        var parameters = new DialogParameters<EditRegistry>();
+        parameters.Add(x => x.Registry, registry);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        var dialog = await DialogService.ShowAsync<EditRegistry>("Registro", parameters, options);
+        await dialog.Result;
+    }
+
+    private async Task GoBack()
+    {
+        await JsRuntime.InvokeVoidAsync("history.back");
+    }
+
+    private void GoToRoutine()
+    {
+        NavigationManager.NavigateTo($"/editroutine/{Id}");
+    }
+}

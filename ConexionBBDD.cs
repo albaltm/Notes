@@ -19,13 +19,9 @@ public class ConexionBBDD
         Conn.CreateTable<Event>();
         Conn.CreateTable<ToDoItem>();
         Conn.CreateTable<SubToDo>();
-        //Conn.DeleteAll<Note>();
-        //Conn.DeleteAll<Notebook>();
-        //Conn.DeleteAll<CreateQueue>();
-        //Conn.DeleteAll<DeleteQueue>();
-        //Conn.DeleteAll<Event>();
-        //Conn.DeleteAll<ToDoItem>();
-        //Conn.DeleteAll<SubToDo>();
+        Conn.CreateTable<Routine>();
+        Conn.CreateTable<RoutineRegistry>();
+        //Conn.DeleteAll<RoutineRegistry>();
     }
     public SQLiteConnection GetConnection()
     {
@@ -46,6 +42,8 @@ public class ConexionBBDD
         Conn.DeleteAll<Event>();
         Conn.DeleteAll<ToDoItem>();
         Conn.DeleteAll<SubToDo>();
+        Conn.DeleteAll<Routine>();
+        Conn.DeleteAll<RoutineRegistry>();
     }
 
     public Note GetNote(string id)
@@ -109,7 +107,6 @@ public class ConexionBBDD
         }
         return toDos;
     }
-
     public SubToDo GetSubToDo(string id)
     {
         var subToDo = Conn.CreateCommand($"select * from subtodo WHERE id = '{id}'").ExecuteDeferredQuery<SubToDo>().FirstOrDefault();
@@ -125,7 +122,36 @@ public class ConexionBBDD
         }
         return subToDos;
     }
-
+    public Routine GetRoutine(string id)
+    {
+        var routine = Conn.CreateCommand($"select * from routine WHERE id = '{id}'").ExecuteDeferredQuery<Routine>().FirstOrDefault();
+        return routine;
+    }
+    public List<Routine> GetRoutines()
+    {
+        List<Routine> routines = new List<Routine>();
+        var query = Conn.CreateCommand("select * from routine").ExecuteDeferredQuery<Routine>().ToList();
+        foreach (var routine in query)
+        {
+            routines.Add(routine);
+        }
+        return routines;
+    }
+    public RoutineRegistry GetRoutineRegistry(string id)
+    {
+        var routineregistry = Conn.CreateCommand($"select * from routineregistry WHERE id = '{id}'").ExecuteDeferredQuery<RoutineRegistry>().FirstOrDefault();
+        return routineregistry;
+    }
+    public List<RoutineRegistry> GetRoutinesRegistry()
+    {
+        List<RoutineRegistry> routines = new List<RoutineRegistry>();
+        var query = Conn.CreateCommand("select * from routineregistry").ExecuteDeferredQuery<RoutineRegistry>().ToList();
+        foreach (var registry in query)
+        {
+            routines.Add(registry);
+        }
+        return routines;
+    }
     public List<CreateQueue> GetCreateQueue()
     {
         List<CreateQueue> queue = new List<CreateQueue>();

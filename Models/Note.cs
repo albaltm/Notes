@@ -24,7 +24,7 @@ namespace AppNotes.Models
         [Column("content")]
         public string Content { get; set; } = "";
         [Column("created")]
-        public DateTime Created { get; set; }
+        public DateTime Created { get; set; } = DateTime.Now;
         [Column("modified")]
         public DateTime Modified { get; set; }
         //[Column("tags")]

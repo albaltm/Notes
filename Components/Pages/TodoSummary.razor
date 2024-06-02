@@ -5,6 +5,7 @@
 @inject ToDoService TodoService
 @inject ConexionBBDD _conn
 @inject NavigationManager NavigationManager
+@inject IDialogService DialogService
 @inject IJSRuntime JSRuntime
 @inherits Global
 
@@ -39,22 +40,22 @@
                 <ChildContent>
                     <span class="d-flex" style="height:1.5em;">
                         <span>Rango</span>
-                        <MudDateRangePicker @ref="rangePicker" DisableToolbar DisplayMonths="1" PickerClosed="() => Filter(4)" DisableUnderLine Style="width:3em; display:inline-block; margin-top:3em;" PickerVariant="PickerVariant.Dialog" @bind-DateRange="dateRange" />
+                        <MudDateRangePicker @ref="rangePicker" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight" DisableToolbar DisplayMonths="1" DisableUnderLine Style="width:3em; display:inline-block; margin-top:3em;" @bind-DateRange="dateRange" />
                     </span>
                 </ChildContent>
             </MudMenuItem>
             <MudMenuItem OnClick="() => Filter(5)" OnTouch="() => Filter(5)">Todas</MudMenuItem>
         </ChildContent>
     </MudMenu>
-    <MudText Typo="Typo.h6" Align="Align.Center" Class="flex-grow-1" style="padding-right:1.5em; padding-top:0.37em;">@(filter == 4 ? "Todas" : filter == 0 ? "Hoy" : filter == 1 ? "Esta semana" : filter == 2 ? "Este mes" : "Este año")</MudText>
+    <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Primary" Class="flex-grow-1 fw-bold" style="padding-right:1.5em; padding-top:0.37em;">@(filter == 5 ? "Todas" : filter == 0 ? "Hoy" : filter == 1 ? "Esta semana" : filter == 2 ? "Este mes" : filter == 3 ? "Este año" : $"{SelectedStart.Value.ToShortDateString()} - {SelectedEnd.Value.ToShortDateString()}")</MudText>
     <MudMenu TransformOrigin="Origin.TopRight" AnchorOrigin="Origin.TopRight">
         <ActivatorContent>
             <MudIconButton Icon="@Icons.Material.Rounded.MoreVert" />
         </ActivatorContent>
         <ChildContent>
-            <MudMenuItem OnClick="() => Delete(0)" OnTouch="() => Delete(0)">Eliminar todas las tareas</MudMenuItem>
+            <MudMenuItem OnClick="() => Delete(0)" OnTouch="() => Delete(0)">Eliminar todas</MudMenuItem>
             <MudMenuItem OnClick="() => Delete(1)" OnTouch="() => Delete(1)">Eliminar tareas pasadas</MudMenuItem>
-            <MudMenuItem OnClick="() => Delete(2)" OnTouch="() => Delete(2)">Eliminar tareas completadas</MudMenuItem>
+            <MudMenuItem OnClick="() => Delete(2)" OnTouch="() => Delete(2)">Eliminar completadas</MudMenuItem>
         </ChildContent>
     </MudMenu>
 </div>
@@ -70,8 +71,8 @@
 
 @if (ToDosToDo.Count() > 0)
 {
-    <div class="justify-content-between expandable d-flex p-2 px-4 mt-5" style="border-radius: 5px; background-color:rgba(162, 77, 255, 0.6); cursor:pointer;" @onclick="@(() => toDoExpanded = !toDoExpanded)">
-        <MudText Class="flex-grow-1">Por hacer</MudText>
+    <div class="justify-content-between expandable d-flex p-2 px-4 mt-5" style="border-radius: 5px; background-color: @(filter == 4 ? "rgba(66, 170, 255, 0.8)" : "rgba(162, 77, 255, 0.6)") ; cursor:pointer;" @onclick="@(() => toDoExpanded = !toDoExpanded)">
+        <MudText Class="flex-grow-1">@(filter == 4 ? "Todo" : "Por hacer")</MudText>
             <MudText Style="font-size:1em; padding-top:0.2em; padding-right: 0.4em;">@ToDosToDo.Count</MudText>
         <MudIcon Icon="@(toDoExpanded ? @Icons.Material.Rounded.KeyboardArrowUp : @Icons.Material.Rounded.KeyboardArrowDown)" Class="flex-shrink-1" />
     </div>
@@ -141,7 +142,7 @@
                 <div class="w-100">
                     <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;" class="m-0">@todo.Text</p>
                     <p class="m-0">
-                        Completado el @todo.CompletedAt.Value.ToShortDateString() @todo.CompletedAt.Value.ToShortTimeString()
+                        Completado el @todo.CompletedAt.Value.ToShortDateString() a las @todo.CompletedAt.Value.ToShortTimeString()
                     </p>
                 </div>
             </MudPaper>
@@ -154,41 +155,15 @@
     <MudText Typo="Typo.h6" Align="Align.Center" Class="text-muted" Style="margin-top:30vh;">No hay nada que ver aquí</MudText>
 }
 
-
-
-
-
-
-
-
-
-
-@* <div class="col-10 mx-auto col-lg-6 offset-lg-3">
-<RadzenChart SeriesClick="OnSeriesClick">
-    <RadzenPieSeries Data="@revenue1" CategoryProperty="Name" ValueProperty="Value" Title="Total" TotalAngle="365" StartAngle="180">
-            <ChildContent>
-                <RadzenSeriesDataLabels Visible="false" />
-            </ChildContent>
-    </RadzenPieSeries>
-</RadzenChart>
-</div> *@
-@* <div Class="rz-p-0 rz-p-md-12">
-    <RadzenChart>
-        <RadzenStackedColumnSeries Data="@revenue1" CategoryProperty="Name" ValueProperty="Value" Title="Completado"/>
-    </RadzenChart>
-</div> *@
-
-
-
 @code {
     MudMenu mudmenu;
     MudDateRangePicker rangePicker;
     string token;
 
-    List<ToDoItem> ToDos { get; set; }
-    List<ToDoItem> ToDosToDo { get; set; }
-    List<ToDoItem> ToDosInProgress { get; set; }
-    List<ToDoItem> ToDosDone { get; set; }
+    List<ToDoItem> ToDos { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> ToDosToDo { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> ToDosInProgress { get; set; } = new List<ToDoItem>();
+    List<ToDoItem> ToDosDone { get; set; } = new List<ToDoItem>();
 
     bool toDoExpanded = false;
     bool inProgressExpanded = false;
@@ -206,7 +181,17 @@
             inProgressExpanded = false;
             doneExpanded = false;
             if (value == 0) { toDoExpanded = true; }
-            if (value == 1) { inProgressExpanded = true; }
+            if (value == 1)
+            {
+                if (filter == 4)
+                {
+                    doneExpanded = true;
+                }
+                else
+                {
+                    inProgressExpanded = true;                     
+                } 
+            }
             if (value == 2) { doneExpanded = true; }
         }
     }
@@ -239,8 +224,8 @@
     protected async override void OnInitialized()
     {
         base.OnInitialized();
-        token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
         Filter(5);
+        token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
     }
 
     private void Filter(int type)
@@ -277,6 +262,7 @@
             ToDosDone = ToDos.Where(x => x.Status == Status.Done && x.CompletedAt >= SelectedStart && x.CompletedAt <= SelectedEnd).ToList();
             if (type == 4)
             {
+                ToDosToDo = ToDos.Where(x => x.Status != Status.Done && x.Start <= SelectedEnd && (x.End == null || ((x.End.Value >= SelectedStart && x.End.Value <= SelectedEnd) || x.Repeat))).ToList();
                 ToDosInProgress = new List<ToDoItem>();
             }
         }
@@ -297,6 +283,19 @@
         data[0] = ToDosToDo.Count();
         data[1] = ToDosInProgress.Count();
         data[2] = ToDosDone.Count();
+
+        if (type == 0)
+        {
+            toDoExpanded = true;
+            inProgressExpanded = true;
+            doneExpanded = true;
+        }
+        else
+        {
+            toDoExpanded = false;
+            inProgressExpanded = false;
+            doneExpanded = false;
+        }
     }
 
     private void FilterByName()
@@ -331,6 +330,28 @@
 
     private async void Delete(int option)
     {
+        var cadena = "";
+        if (option == 0)
+        {
+            cadena = "¿Seguro que quieres eliminar todas las tareas?";
+        }
+        else if (option == 1)
+        {
+            cadena = "¿Seguro que quieres eliminar todas las tareas pasadas?";
+        }
+        else if (option == 2)
+        {
+            cadena = "¿Seguro que quieres eliminar todas las tareas completadas?";
+        }
+        bool? result = await DialogService.ShowMessageBox(
+                "Eliminar",
+               cadena,
+                yesText: "Si", noText: "Cancelar");
+        if (result != true)
+        {
+            return;
+        }
+
         foreach (var todo in ToDos)
         {
             if (option == 0) //todas
@@ -346,6 +367,9 @@
                 await TodoService.DeleteToDo(token, FirebasePath, todo);
             }
         }
+
+        Filter(5);
+        StateHasChanged();
     }
 
     private DateTime GetFirstDayOfMonth(int year, int month)
@@ -356,50 +380,4 @@
     {
         return new DateTime(year, month, 1).AddMonths(1).AddSeconds(-1);
     }
-
-
-
-
-
-
-
-
-
-
-    // string cadena { get; set; } = "";
-    // class ChartToDo()
-    // {
-    //     public string Name { get; set; }
-    //     public int Value { get; set; }
-
-    //     public override string ToString()
-    //     {
-    //         return Name;
-    //     }
-    // }
-
-    // ChartToDo[] revenue1;
-
-    // private void DrawTotalChart()
-    // {
-    //     revenue1 = new ChartToDo[3];
-    //     revenue1[0] = new ChartToDo { Name = "Por hacer", Value = ToDos.Where(x => x.Status == Status.ToDo).Count() };
-    //     revenue1[1] = new ChartToDo { Name = "En progreso", Value = ToDos.Where(x => x.Status == Status.InProgress).Count() };
-    //     revenue1[2] = new ChartToDo { Name = "Completado", Value = ToDos.Where(x => x.Status == Status.Done).Count() };
-    // }
-
-    // private void DrawYearChart(int year)
-    // {
-    //     string[] months = { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"};
-    //     revenue1 = new ChartToDo[12];
-    //     for (int i = 0; i < 12; i++)
-    //     {
-    //         revenue1[i] = new ChartToDo { Name = months[i], Value = ToDos.Where(x => x.Status == Status.Done && x.Start > GetFirstDayOfMonth(year, i + 1) && x.Start < GetLastDayOfMonth(year, i + 1)).Count() };
-    //     }
-    // }
-
-    // void OnSeriesClick(SeriesClickEventArgs args)
-    // {
-    //     cadena = args.Data.ToString();
-    // }
 }

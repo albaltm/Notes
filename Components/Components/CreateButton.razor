@@ -11,6 +11,7 @@
     <ChildContent>
         <MudMenuItem OnClick="NewNotebook" OnTouch="NewNotebook" Style="min-width:12em;">Libreta<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.MenuBook" /></MudMenuItem>
         <MudMenuItem Href="/editnote">Nota<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.StickyNote2" /></MudMenuItem>
+        <MudMenuItem OnClick="NewRoutine" OnTouch="NewRoutine">Rutina<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.Autorenew" /></MudMenuItem>
         <MudMenuItem OnClick="NewToDo" OnTouch="NewToDo">Tarea<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.Checklist" /></MudMenuItem>
         <MudMenuItem OnClick="NewEvent" OnTouch="NewEvent">Evento<MudIcon Class="float-end text-secondary" Icon="@Icons.Material.Rounded.Today" /></MudMenuItem>
     </ChildContent>
@@ -31,6 +32,14 @@
         var result = await dialog.Result;
         NavigationManager.NavigateTo("/library", true);
     }
+    private void NewToDo()
+    {
+        NavigationManager.NavigateTo($"/edittodo");
+    }
+    private void NewRoutine()
+    {
+        NavigationManager.NavigateTo($"/editroutine");
+    }
     private void NewEvent()
     {
         MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
@@ -42,9 +51,5 @@
                 FullWidth = true
             };
         DialogService.Show<EditEvent>("Evento", options);
-    }
-    private void NewToDo()
-    {
-        NavigationManager.NavigateTo($"/edittodo");
     }
 }

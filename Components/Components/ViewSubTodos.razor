@@ -85,5 +85,39 @@
             subtodo.Status = status.Value;
         }
         _conn.Conn.Update(subtodo);
+        var todo = _conn.GetToDo(subtodo.ToDo);
+        if (subtodo.Status == Status.Done)
+        {
+            var notDone = _conn.GetSubToDos().Where(x => x.ToDo.Equals(subtodo.ToDo) && x.Status != Status.Done).FirstOrDefault();
+            if (notDone == null)
+            {
+                todo.Modified = DateTime.UtcNow;
+                todo.Status = Status.Done;
+                todo.CompletedAt = DateTime.UtcNow;
+                _conn.Conn.Update(todo);
+            }
+            else if (todo.Status != Status.InProgress)
+            {
+                todo.Modified = DateTime.UtcNow;
+                todo.Status = Status.InProgress;
+                todo.CompletedAt = null;
+                _conn.Conn.Update(todo);
+            }
+        }
+        else
+        {
+            todo.Modified = DateTime.UtcNow;
+            var progress = _conn.GetSubToDos().Where(x => x.ToDo.Equals(subtodo.ToDo) && x.Status == Status.InProgress).FirstOrDefault();
+            if (progress == null)
+            {
+                todo.Status = Status.ToDo;
+            }
+            else
+            {
+                todo.Status = Status.InProgress;
+            }
+            todo.CompletedAt = null;
+            _conn.Conn.Update(todo);
+        }
     }
 }
