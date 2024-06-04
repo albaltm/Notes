@@ -74,20 +74,20 @@
     private DateTime SelectedDate { get; set; } = DateTime.Today;
     private DateTime Monday { get; set; }
     string searchText { get; set; } = "";
-    string token = "";
+    string user;
     int filter = 0;
 
     protected async override void OnInitialized()
     {
         base.OnInitialized();
-        token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        user = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "user");
         Monday = GetFirstDayOfWeek(DateTime.Today);
         Recargar();
     }
 
     private void Recargar()
     {
-        Routines = _conn.GetRoutines().OrderByDescending(x => x.Priority).ToList();
+        Routines = _conn.GetRoutines(user).OrderByDescending(x => x.Priority).ToList();
         StateHasChanged();
         filter = 0;
     }
@@ -104,8 +104,8 @@
 
     private bool? Completed(Routine routine, int day)
     {
-        if (!RoutineService.ShowToday(routine, Monday.AddDays(day))) return null;
-        var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(routine.Id) && x.Start == Monday.AddDays(day));
+        if (!RoutineService.ShowToday(routine, Monday.AddDays(day), user)) return null;
+        var registry = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(routine.Id) && x.Start == Monday.AddDays(day));
         return false;
     }
 
@@ -118,12 +118,12 @@
 
     private void FilterActive()
     {
-        Routines = _conn.GetRoutines().Where(x => x.Active).OrderByDescending(x => x.Priority).ToList();
+        Routines = _conn.GetRoutines(user).Where(x => x.Active).OrderByDescending(x => x.Priority).ToList();
         filter = 1;
     }
     private void FilterInactive()
     {
-        Routines = _conn.GetRoutines().Where(x => !x.Active).OrderByDescending(x => x.Priority).ToList();
+        Routines = _conn.GetRoutines(user).Where(x => !x.Active).OrderByDescending(x => x.Priority).ToList();
         filter = 2;
     }
     private async void RestartProgress()
@@ -136,10 +136,10 @@
         {
             return;
         }
-        var registries = _conn.GetRoutinesRegistry().ToList();
+        var registries = _conn.GetRoutinesRegistry(user).ToList();
         foreach (var registry in registries)
         {
-            ToDoService.DeleteRoutineRegistry(token, FirebasePath, registry);
+            ToDoService.DeleteRoutineRegistry(user, FirebasePath, registry);
         }
         Recargar();
     }
@@ -153,10 +153,10 @@
         {
             return;
         }
-        var routines = _conn.GetRoutines().Where(x => !x.Active).ToList();
+        var routines = _conn.GetRoutines(user).Where(x => !x.Active).ToList();
         foreach (var routine in routines)
         {
-            ToDoService.DeleteRoutine(token, FirebasePath, routine);
+            ToDoService.DeleteRoutine(user, FirebasePath, routine);
         }
         Recargar();
     }
@@ -170,10 +170,10 @@
         {
             return;
         }
-        var routines = _conn.GetRoutines().ToList();
+        var routines = _conn.GetRoutines(user).ToList();
         foreach (var routine in routines)
         {
-            ToDoService.DeleteRoutine(token, FirebasePath, routine);
+            ToDoService.DeleteRoutine(user, FirebasePath, routine);
         }
         Recargar();
     }
@@ -187,7 +187,7 @@
     }
     private async void Delete(Routine routine)
     {
-        await ToDoService.DeleteRoutine(token, FirebasePath, routine);
+        await ToDoService.DeleteRoutine(user, FirebasePath, routine);
     }
 
     private void GoToHabit(Routine routine)

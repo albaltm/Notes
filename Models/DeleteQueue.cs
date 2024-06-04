@@ -15,6 +15,8 @@ namespace AppNotes.Models
         public string Id { get; set; }
         [Column("type")]
         public DocumentType Type { get; set; }
+        [Column("user")]
+        public string User { get; set; }
     }
 
     public enum DocumentType

@@ -10,8 +10,8 @@
 
     protected async override void OnInitialized()
     {
-        var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        if (string.IsNullOrWhiteSpace(token))
+        var user = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "user");
+        if (string.IsNullOrWhiteSpace(user))
         {
             NavigationManager.NavigateTo("/login");
         }

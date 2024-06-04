@@ -19,40 +19,39 @@ namespace AppNotes.Services
     {
         private readonly string FirebasePath = "https://appnotes-d61d3-default-rtdb.firebaseio.com/";
         
-        public async Task TrySync(string token)
+        public async Task TrySync(string user)
         {
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
-                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
+                await client.Child("userauthentication").OnceAsync<UserAuthentication>();
                 client.Dispose();
                 
-                await TrySyncLibrary(token);
-                await TrySyncEvents(token);
-                await TrySyncToDo(token);
-                await TrySyncRoutines(token);
+                await TrySyncLibrary(user);
+                await TrySyncEvents(user);
+                await TrySyncToDo(user);
+                await TrySyncRoutines(user);
             }
             catch { }
         }
 
-        public async Task TrySyncLibrary(string token)
+        public async Task TrySyncLibrary(string user)
         {
-            if (token.Equals("guest"))
+            if (user.Equals("guest"))
             {
                 return;
             }
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
-                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
 
-                await SyncCreateQueueLibrary(client, userId);
+                await SyncCreateQueueLibrary(client, user);
                 await SyncDeleteQueueLibrary(client);
                 
                 client.Dispose();
 
-                var notesFirebase = (await client.Child("note").OnceAsync<Note>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-                var notes = _conn.GetNotes();
+                var notesFirebase = (await client.Child("note").OnceAsync<Note>()).Select(x => x.Object).Where(x => x.User.Equals(user)).ToList();
+                var notes = _conn.GetNotes(user);
                 foreach (var noteFirebase in notesFirebase)
                 {
                     Note? note = _conn.GetNote(noteFirebase.Id);
@@ -80,8 +79,8 @@ namespace AppNotes.Services
 
                 }
 
-                var notebooksFirebase = (await client.Child("notebook").OnceAsync<Notebook>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-                var notebooks = _conn.GetNotebooks();
+                var notebooksFirebase = (await client.Child("notebook").OnceAsync<Notebook>()).Select(x => x.Object).Where(x => x.User.Equals(user)).ToList();
+                var notebooks = _conn.GetNotebooks(user);
                 foreach (var notebookFirebase in notebooksFirebase)
                 {
                     Notebook? notebook = _conn.GetNotebook(notebookFirebase.Id);
@@ -121,26 +120,24 @@ namespace AppNotes.Services
                 }
             }
             catch { }
-            
         }
-        public async Task TrySyncEvents(string token)
+        public async Task TrySyncEvents(string user)
         {
-            if (token.Equals("guest"))
+            if (user.Equals("guest"))
             {
                 return;
             }
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
-                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
                 
-                await SyncCreateQueueEvents(client,userId);
+                await SyncCreateQueueEvents(client,user);
                 await SyncDeleteQueueEvents(client);
 
                 client.Dispose();
 
-                var eventsFirebase = (await client.Child("event").OnceAsync<Event>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-                var events = _conn.GetEvents();
+                var eventsFirebase = (await client.Child("event").OnceAsync<Event>()).Select(x => x.Object).Where(x => x.User.Equals(user)).ToList();
+                var events = _conn.GetEvents(user);
                 foreach (var eventFirebase in eventsFirebase)
                 {
                     Event? evento = _conn.GetEvent(eventFirebase.Id);
@@ -165,7 +162,6 @@ namespace AppNotes.Services
                             }
                         }
                     }
-
                 }
 
                 //si algo se ha eliminado en otro dispositivo
@@ -175,26 +171,24 @@ namespace AppNotes.Services
                 }
             }
             catch { }
-            
         }
-        public async Task TrySyncToDo(string token)
+        public async Task TrySyncToDo(string user)
         {
-            if (token.Equals("guest"))
+            if (user.Equals("guest"))
             {
                 return;
             }
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
-                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
 
-                await SyncCreateQueueToDo(client, userId);
+                await SyncCreateQueueToDo(client, user);
                 await SyncDeleteQueueToDo(client);
 
                 client.Dispose();
 
-                var subtodosFirebase = (await client.Child("subtodo").OnceAsync<SubToDo>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-                var subtodos = _conn.GetSubToDos();
+                var subtodosFirebase = (await client.Child("subtodo").OnceAsync<SubToDo>()).Select(x => x.Object).Where(x => x.User.Equals(user)).ToList();
+                var subtodos = _conn.GetSubToDos(user);
                 foreach (var subtodoFirebase in subtodosFirebase)
                 {
                     SubToDo? subtodo = _conn.GetSubToDo(subtodoFirebase.Id);
@@ -222,8 +216,8 @@ namespace AppNotes.Services
 
                 }
 
-                var todosFirebase = (await client.Child("todo").OnceAsync<ToDoItem>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-                var todos = _conn.GetToDos();
+                var todosFirebase = (await client.Child("todo").OnceAsync<ToDoItem>()).Select(x => x.Object).Where(x => x.User.Equals(user)).ToList();
+                var todos = _conn.GetToDos(user);
                 foreach (var todoFirebase in todosFirebase)
                 {
                     ToDoItem? todo = _conn.GetToDo(todoFirebase.Id);
@@ -249,7 +243,6 @@ namespace AppNotes.Services
                             }
                         }
                     }
-
                 }
 
                 //si algo se ha eliminado en otro dispositivo
@@ -264,24 +257,23 @@ namespace AppNotes.Services
             }
             catch { }
         }
-        public async Task TrySyncRoutines(string token)
+        public async Task TrySyncRoutines(string user)
         {
-            if (token.Equals("guest"))
+            if (user.Equals("guest"))
             {
                 return;
             }
             try
             {
                 FirebaseClient client = new FirebaseClient(FirebasePath);
-                var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().First().User;
 
-                await SyncCreateQueueRoutine(client, userId);
+                await SyncCreateQueueRoutine(client, user);
                 await SyncDeleteQueueRoutine(client);
 
                 client.Dispose();
 
-                var registriesFirebase = (await client.Child("routineregistry").OnceAsync<RoutineRegistry>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-                var registries = _conn.GetRoutinesRegistry();
+                var registriesFirebase = (await client.Child("routineregistry").OnceAsync<RoutineRegistry>()).Select(x => x.Object).Where(x => x.User.Equals(user)).ToList();
+                var registries = _conn.GetRoutinesRegistry(user);
                 foreach (var registryFirebase in registriesFirebase)
                 {
                     RoutineRegistry? registry = _conn.GetRoutineRegistry(registryFirebase.Id);
@@ -306,11 +298,10 @@ namespace AppNotes.Services
                             }
                         }
                     }
-
                 }
 
-                var routinesFirebase = (await client.Child("routine").OnceAsync<Routine>()).Select(x => x.Object).Where(x => x.User.Equals(userId)).ToList();
-                var routines = _conn.GetRoutines();
+                var routinesFirebase = (await client.Child("routine").OnceAsync<Routine>()).Select(x => x.Object).Where(x => x.User.Equals(user)).ToList();
+                var routines = _conn.GetRoutines(user);
                 foreach (var routineFirebase in routinesFirebase)
                 {
                     Routine? routine = _conn.GetRoutine(routineFirebase.Id);
@@ -336,7 +327,6 @@ namespace AppNotes.Services
                             }
                         }
                     }
-
                 }
 
                 //si algo se ha eliminado en otro dispositivo
@@ -424,7 +414,7 @@ namespace AppNotes.Services
             }
             catch { }
         }
-        private async Task SyncCreateQueueLibrary(FirebaseClient client, string userId)
+        private async Task SyncCreateQueueLibrary(FirebaseClient client, string user)
         {
             try
             {
@@ -437,7 +427,7 @@ namespace AppNotes.Services
                         _conn.Conn.Delete(note);
                         var firebaseItem = await client.Child("note").PostAsync(note);
                         note.Id = firebaseItem.Key;
-                        note.User = userId;
+                        note.User = user;
                         await client.Child("note").Child(note.Id).PutAsync(note);
                         _conn.Conn.Insert(note);
                     }
@@ -447,7 +437,7 @@ namespace AppNotes.Services
                         _conn.Conn.Delete(notebook);
                         var firebaseItem = await client.Child("notebook").PostAsync(notebook);
                         notebook.Id = firebaseItem.Key;
-                        notebook.User = userId;
+                        notebook.User = user;
                         await client.Child("notebook").Child(notebook.Id).PutAsync(notebook);
                         _conn.Conn.Insert(notebook);
                     }
@@ -456,7 +446,7 @@ namespace AppNotes.Services
             }
             catch { }
         }
-        private async Task SyncCreateQueueEvents(FirebaseClient client, string userId)
+        private async Task SyncCreateQueueEvents(FirebaseClient client, string user)
         {
             try
             {
@@ -465,7 +455,7 @@ namespace AppNotes.Services
                 {
                     var evento = _conn.GetEvent(item.Id);
                     _conn.Conn.Delete(evento);
-                    evento.User = userId;
+                    evento.User = user;
                     var firebaseItem = await client.Child("event").PostAsync(evento);
                     evento.Id = firebaseItem.Key;
                     await client.Child("event").Child(evento.Id).PutAsync(evento);
@@ -476,7 +466,7 @@ namespace AppNotes.Services
             }
             catch { }
         }
-        private async Task SyncCreateQueueToDo(FirebaseClient client, string userId)
+        private async Task SyncCreateQueueToDo(FirebaseClient client, string user)
         {
             try
             {
@@ -489,7 +479,7 @@ namespace AppNotes.Services
                         _conn.Conn.Delete(subtodo);
                         var firebaseItem = await client.Child("subtodo").PostAsync(subtodo);
                         subtodo.Id = firebaseItem.Key;
-                        subtodo.User = userId;
+                        subtodo.User = user;
                         await client.Child("subtodo").Child(subtodo.Id).PutAsync(subtodo);
                         _conn.Conn.Insert(subtodo);
                     }
@@ -499,7 +489,7 @@ namespace AppNotes.Services
                         _conn.Conn.Delete(todo);
                         var firebaseItem = await client.Child("todo").PostAsync(todo);
                         todo.Id = firebaseItem.Key;
-                        todo.User = userId;
+                        todo.User = user;
                         await client.Child("todo").Child(todo.Id).PutAsync(todo);
                         _conn.Conn.Insert(todo);
                     }
@@ -508,7 +498,7 @@ namespace AppNotes.Services
             }
             catch { }
         }
-        private async Task SyncCreateQueueRoutine(FirebaseClient client, string userId)
+        private async Task SyncCreateQueueRoutine(FirebaseClient client, string user)
         {
             try
             {
@@ -521,7 +511,7 @@ namespace AppNotes.Services
                         _conn.Conn.Delete(registry);
                         var firebaseItem = await client.Child("routineregistry").PostAsync(registry);
                         registry.Id = firebaseItem.Key;
-                        registry.User = userId;
+                        registry.User = user;
                         await client.Child("routineregistry").Child(registry.Id).PutAsync(registry);
                         _conn.Conn.Insert(registry);
                     }
@@ -531,7 +521,7 @@ namespace AppNotes.Services
                         _conn.Conn.Delete(routine);
                         var firebaseItem = await client.Child("routine").PostAsync(routine);
                         routine.Id = firebaseItem.Key;
-                        routine.User = userId;
+                        routine.User = user;
                         await client.Child("routine").Child(routine.Id).PutAsync(routine);
                         _conn.Conn.Insert(routine);
                     }

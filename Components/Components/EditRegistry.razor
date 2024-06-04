@@ -47,8 +47,6 @@
     </DialogContent>
 </MudDialog>
 @code {
-    string token;
-
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
     [Parameter]
     public RoutineRegistry Registry { get; set; }
@@ -141,7 +139,6 @@
     protected async override void OnInitialized()
     {
         base.OnInitialized();
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
         Routine = _conn.GetRoutine(Registry.Routine);
         StateHasChanged();
     }

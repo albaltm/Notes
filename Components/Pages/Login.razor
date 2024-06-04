@@ -2,7 +2,6 @@
 @using AppNotes.Components.Components
 @using AppNotes.Services
 @using Firebase.Auth
-@using Firebase.Auth.Providers
 @using Firebase.Database
 @using Firebase.Database.Query
 @using MudBlazor.Services
@@ -114,6 +113,7 @@
                 authentication.Token = firebaseauth.Key;
                 await client.Child("userauthentication").Child(firebaseauth.Key).PutAsync(authentication);
                 await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", authentication.Token);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "user", authentication.User);
                 client.Dispose();
                 await SynchronizationService.TrySyncEvents(authentication.Token);
                 NavigationManager.NavigateTo("/");
@@ -129,11 +129,12 @@
     {
         bool? result = await DialogService.ShowMessageBox(
             "¿Seguro?",
-            "No podrás sincronizar tus datos en otros dispositivos, pero puedes crear una cuenta más adelante.",
+            "Tus datos solo estarán disponibles en este dispositivo.",
             yesText: "Confirmar", cancelText: "Cancelar");
         if (result != null)
         {
             await JSRuntime.InvokeAsync<string>("localStorage.setItem", "token", "guest");
+            await JSRuntime.InvokeAsync<string>("localStorage.setItem", "user", "guest");
             NavigationManager.NavigateTo("/");
         }
     }

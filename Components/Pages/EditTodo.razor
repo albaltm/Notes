@@ -61,7 +61,7 @@
 
             @if (Id != null)
             {
-                <div class="d-flex justify-content-between">
+                <div class="d-flex justify-content-between mb-4">
                     <MudText>Progreso</MudText>
                     <MudIconButton OnClick="() => ToggleDone(null)" Icon="@(ToDoItem.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : ToDoItem.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" Disabled="SubTodos.Count()>0" />
                 </div>
@@ -195,7 +195,7 @@
 
     private ToDoItem ToDoItem { get; set; }
 
-    private string token;
+    private string user;
 
     private DateTime? StartDate
     {
@@ -265,22 +265,38 @@
 
     protected async override Task OnInitializedAsync()
     {
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
         if (string.IsNullOrWhiteSpace(Id))
         {
             ToDoItem = new ToDoItem()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    User = token,
+                    User = user,
                     Modified = DateTime.UtcNow,
                 };
         }
         else
         {
-            await SynchronizationService.TrySyncToDo(token);
+            await SynchronizationService.TrySyncToDo(user);
             ToDoItem = _conn.GetToDo(Id);
         }
-        SubTodos = _conn.GetSubToDos().Where(x => x.ToDo.Equals(ToDoItem.Id)).OrderBy(x => x.Created).ToList();
+        SubTodos = _conn.GetSubToDos(user).Where(x => x.ToDo.Equals(ToDoItem.Id)).OrderBy(x => x.Created).ToList();
+    }
+
+    private void CalculateProgress()
+    {
+        var noProgress = true;
+        var allCompleted = true;
+
+        foreach (var subtodo in SubTodos)
+        {
+            if (subtodo.Status != Status.ToDo) { noProgress = false; }
+            if (subtodo.Status != Status.Done) { allCompleted = false; }
+        }
+
+        if (allCompleted) { ToDoItem.Status = Status.Done; }
+        else if (noProgress) { ToDoItem.Status = Status.ToDo; }
+        else { ToDoItem.Status = Status.InProgress; }
     }
 
     private async Task SaveToDo(bool exit)
@@ -291,7 +307,7 @@
         ToDoItem.Modified = DateTime.UtcNow;
         if (Id == null)
         {
-            Id = await ToDoService.CreateToDo(token, FirebasePath, ToDoItem);
+            Id = await ToDoService.CreateToDo(user, FirebasePath, ToDoItem);
             ToDoItem = _conn.GetToDo(Id);
         }
         else
@@ -307,7 +323,7 @@
                 subtodo.Id = Guid.NewGuid().ToString();
                 subtodo.ToDo = ToDoItem.Id;
                 subtodo.User = ToDoItem.User;
-                await ToDoService.CreateSubToDo(token, FirebasePath, subtodo);
+                await ToDoService.CreateSubToDo(user, FirebasePath, subtodo);
             }
             else
             {
@@ -317,7 +333,7 @@
 
         foreach (var subtodo in SubTodosToRemove)
         {
-            ToDoService.DeleteSubToDo(token, FirebasePath, subtodo);
+            ToDoService.DeleteSubToDo(user, FirebasePath, subtodo);
         }
 
         if (SubTodos.Count() > 0)
@@ -363,7 +379,7 @@
             yesText: "Si", noText: "Cancelar");
         if (result == true)
         {
-            await ToDoService.DeleteToDo(token, FirebasePath, ToDoItem);
+            await ToDoService.DeleteToDo(user, FirebasePath, ToDoItem);
             NavigationManager.NavigateTo("/to-do", true);
         }
     }
@@ -371,6 +387,7 @@
     private void CreateSubTodo()
     {
         SubTodos.Add(new SubToDo());
+        CalculateProgress();
     }
 
     private void DeleteAllSubTodo()
@@ -379,12 +396,14 @@
         {
             DeleteSubTodo(subtodo);
         }
+        ToDoItem.Status = Status.ToDo;
     }
 
     private void DeleteSubTodo(SubToDo subtodo)
     {
         SubTodos.Remove(subtodo);
         if (subtodo.Id != null) { SubTodosToRemove.Add(subtodo); }
+        CalculateProgress();
     }
 
     private void ToggleDone(Status? status)
@@ -424,6 +443,7 @@
         {
             subtodo.Status = status.Value;
         }
+        CalculateProgress();
     }
 
     private async Task GoBack()

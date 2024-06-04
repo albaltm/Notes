@@ -38,7 +38,7 @@
     <span class="d-flex">
         <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="PreviousWeek" Size="Size.Small" Style="width:1.5em; height:1.5em;" Class="m-auto" />
         <MudDatePicker @ref="datepicker" @bind-Date="PickerDate" DisableToolbar DisableUnderLine PickerVariant="PickerVariant.Dialog" AutoClose Color="Color.Primary" Style="max-width: 2.5em; max-height:0.1em; margin-left:-0.4em; margin-right: 1em; margin-top:0.9em;"
-                       AdditionalDateClassesFunc="@((DateTime dt)=>(_conn.GetEvents().Where(x => x.Start.Date == dt).Count() > 0 ? "mud-theme-primary" : ""))" />
+                       AdditionalDateClassesFunc="@((DateTime dt)=>(_conn.GetEvents(user).Where(x => x.Start.Date == dt).Count() > 0 ? "mud-theme-primary" : ""))" />
         <MudIconButton Icon="@Icons.Material.Rounded.ArrowForward" OnClick="NextWeek" Size="Size.Small" Style="width:1.5em; height:1.5em;" Class="m-auto"></MudIconButton>
         <MudButton Color="Color.Primary" OnClick="() => SelectDate(DateTime.Today)" Class="d-inline-block mt-1">Hoy</MudButton>
     </span>
@@ -102,22 +102,7 @@
                                 <MudIconButton Icon="@(GetToggledIcon(evento))" Size="Size.Medium" OnClick="() => ToggleEvent(evento, null)" Disabled="SelectedDate != DateTime.Today" />
                             </ActivatorContent>
                             <ChildContent>
-                                @if (evento is ToDoItem)
-                                {
-                                    @if (evento.Status != Status.ToDo)
-                                    {
-                                        <MudMenuItem OnClick="() => ToggleEvent(evento, Status.ToDo)" OnTouch="() => ToggleEvent(evento, Status.ToDo)">Marcar por hacer</MudMenuItem>
-                                    }
-                                    @if (evento.Status != Status.InProgress)
-                                    {
-                                        <MudMenuItem OnClick="() => ToggleEvent(evento, Status.InProgress)" OnTouch="() => ToggleEvent(evento, Status.InProgress)">Marcar en progreso</MudMenuItem>
-                                    }
-                                    @if (evento.Status != Status.Done)
-                                    {
-                                        <MudMenuItem OnClick="() => ToggleEvent(evento, Status.Done)" OnTouch="() => ToggleEvent(evento, Status.Done)">Marcar hecho</MudMenuItem>
-                                    }
-                                }
-                                @if (evento is not RoutineRegistry)
+                                @if (evento is Event)
                                 {
                                     @if (evento.Start.Date == DateTime.UtcNow.Date)
                                     {
@@ -133,8 +118,8 @@
                             <MudCardContent>
                                 <span class="d-flex" style="max-height: 2em;width:100%;">
                                     <span style="color: @evento.Color;"><MudIcon Icon="@evento.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
-                                    <span class="w-100 overflow-hidden pe-2">
-                                        <MudText Class="d-inline-block">@evento.Text</MudText>
+                                    <span class="w-100 overflow-hidden pe-2" style="flex-direction:row;">
+                                        <MudText style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;">@evento.Text</MudText>
                                     </span>
                                     <span class="p-0 m-0 pb-1" style="width:fit-content;">
                                         @if (evento.Start.Date == SelectedDate && evento.Start != evento.Start.Date)
@@ -163,8 +148,7 @@
 <CreateButton/>
 
 @code {
-
-    string token;
+    string user;
 
     [Parameter]
     public string? Id { get; set; }
@@ -205,7 +189,7 @@
     protected async override void OnInitialized()
     {
         base.OnInitialized();
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
 
         if (Id != null)
         {
@@ -216,16 +200,18 @@
             SelectDate(DateTime.Today);
         }
         StateHasChanged();
+        await SynchronizationService.TrySync(user);
+        Recargar();
     }
 
     private void Recargar()
     {
         Events = new List<IEvent>();
-        var eventos = _conn.GetEvents().ToList();
-        var tareas = _conn.GetToDos().Where(x => x.AddToCalendar).ToList();
-        var rutinas = _conn.GetRoutines().Where(x => x.AddToCalendar && x.Start <= SelectedDate).OrderByDescending(x => x.Priority).ToList();
+        var eventos = _conn.GetEvents(user).ToList();
+        var tareas = _conn.GetToDos(user).Where(x => x.AddToCalendar).ToList();
+        var rutinas = _conn.GetRoutines(user).Where(x => x.AddToCalendar && x.Start <= SelectedDate).OrderByDescending(x => x.Priority).ToList();
         Events.AddRange(eventos);
-        Events.AddRange(tareas);
+        Events.AddRange(tareas.Where(x => x.Status != Status.Done).ToList());
         TodayEvents = Events.Where(x => x.Start.Date == SelectedDate).OrderBy(x => x.AllDay).ThenBy(x => x.Start).ToList();
         var passingevents = Events.Where(x => x.Start < SelectedDate.Date && (x.End > SelectedDate.Date)).OrderBy(x => x.Start).ToList();
         TodayEvents.AddRange(passingevents);
@@ -234,9 +220,9 @@
         var todayrutinas = new List<RoutineRegistry>();
         foreach (var rutina in rutinas)
         {
-            if (RoutineService.ShowToday(rutina, SelectedDate.Date))
+            if (RoutineService.ShowToday(rutina, SelectedDate.Date, user))
             {
-                var registry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(rutina.Id)).ToList().FirstOrDefault();
+                var registry = _conn.GetRoutinesRegistry(user).Where(x => x.Start == SelectedDate && x.Routine.Equals(rutina.Id)).ToList().FirstOrDefault();
                 if (registry == null)
                 {
                     registry = new RoutineRegistry()
@@ -264,7 +250,7 @@
             TodayEvents.AddRange(repeatedTodos);
         }
         TodayEvents = TodayEvents.OrderBy(x => x.Status).ToList();
-        SynchronizationService.TrySync(token);
+        SynchronizationService.TrySync(user);
     }
 
     private DateTime GetFirstDayOfWeek(DateTime day)
@@ -324,10 +310,10 @@
         else if (evento is RoutineRegistry)
         {
             var e = (RoutineRegistry)evento;
-            var existingRegistry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(e.Routine)).FirstOrDefault();
+            var existingRegistry = _conn.GetRoutinesRegistry(user).Where(x => x.Start == SelectedDate && x.Routine.Equals(e.Routine)).FirstOrDefault();
             if (existingRegistry == null)
             {
-                var id = await ToDoService.CreateRoutineRegistry(token, FirebasePath, e);
+                var id = await ToDoService.CreateRoutineRegistry(user, FirebasePath, e);
                 existingRegistry = _conn.GetRoutineRegistry(id);
             }
 
@@ -363,7 +349,7 @@
 
     private void ToggleEvent(IEvent evento, Status? status)
     {
-        if (evento is RoutineRegistry)
+        if (evento is RoutineRegistry || evento is ToDoItem)
         {
             OpenEvent(evento);
         }
@@ -385,20 +371,7 @@
             {
                 evento.Status = status.Value;
             }
-            if (evento is ToDoItem)
-            {
-                var e = (ToDoItem)evento;
-                if (e.Status == Status.Done)
-                {
-                    e.CompletedAt = DateTime.UtcNow;
-                }
-                else
-                {
-                    e.CompletedAt = null;
-                }
-
-            }
-
+            
             _conn.Conn.Update(evento);
             Recargar();
         }
@@ -417,11 +390,11 @@
     {
         if (evento is Event)
         {
-            await EventService.DeleteEvent(token, FirebasePath, (Event) evento);
+            await EventService.DeleteEvent(user, FirebasePath, (Event) evento);
         }
         else if (evento is ToDoItem)
         {
-            await ToDoService.DeleteToDo(token, FirebasePath, (ToDoItem)evento);
+            await ToDoService.DeleteToDo(user, FirebasePath, (ToDoItem)evento);
         }
         SelectDate(SelectedDate);
     }

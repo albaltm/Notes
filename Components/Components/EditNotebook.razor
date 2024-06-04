@@ -116,19 +116,19 @@
         }
     }
 
-    private string token;
+    private string user;
     private bool exitPage = false;
 
     protected async override Task OnInitializedAsync()
     {
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        await SynchronizationService.TrySyncLibrary(token);
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
+        await SynchronizationService.TrySyncLibrary(user);
         if (string.IsNullOrWhiteSpace(Id))
         {
             Notebook = new Notebook()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    User = token,
+                    User = user,
                     Created = DateTime.UtcNow,
                     Modified = DateTime.UtcNow,
                 };
@@ -138,7 +138,7 @@
         {
             Notebook = _conn.GetNotebook(Id);
         }
-        Notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Notebook.Id) || x.Notebook.Equals("")).OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+        Notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Notebook.Id) || x.Notebook.Equals("")).OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
         SelectedNotes = Notes.ToList().Where(x => x.Notebook.Equals(Notebook.Id));
     }
 
@@ -147,7 +147,7 @@
         Notebook.Modified = DateTime.UtcNow;
         if (Id == null)
         {
-            Id = await LibraryService.CreateNotebook(token, FirebasePath, Notebook);
+            Id = await LibraryService.CreateNotebook(user, FirebasePath, Notebook);
         }
         else
         {
@@ -160,7 +160,7 @@
             {
                 note.Notebook = Notebook.Id;
                 note.Modified = DateTime.UtcNow;
-                var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(Notebook.Id));
+                var notesinnotebook = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Notebook.Id));
                 note.Position = notesinnotebook.Count();
             }
             else if (!SelectedNotes.Contains(note) && note.Notebook.Equals(Notebook.Id))
@@ -168,7 +168,7 @@
                 note.Notebook = "";
                 note.Modified = DateTime.UtcNow;
 
-                var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(Notebook.Id) && !x.Id.Equals(note.Id)).OrderBy(x => x.Position).ToList();
+                var notesinnotebook = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Notebook.Id) && !x.Id.Equals(note.Id)).OrderBy(x => x.Position).ToList();
                 note.Position = -1;
 
                 var position = 0;
@@ -183,7 +183,7 @@
             _conn.GetConnection().Update(note);
         }
 
-        SynchronizationService.TrySyncLibrary(token);
+        SynchronizationService.TrySyncLibrary(user);
         Close();
     }
 
@@ -210,7 +210,7 @@
             };
         var dialog = await DialogService.ShowAsync<ReorderNotes>("Libreta", parameters, options);
         await dialog.Result;
-        Notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Notebook.Id) || x.Notebook.Equals("")).OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+        Notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Notebook.Id) || x.Notebook.Equals("")).OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
         SelectedNotes = Notes.ToList().Where(x => x.Notebook.Equals(Notebook.Id));
     }
 }

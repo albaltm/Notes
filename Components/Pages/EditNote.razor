@@ -134,7 +134,7 @@
                         <span style=" font-size: 0.9em;">Quitar de libreta</span>
                     </MudMenuItem>
                 }
-                else
+                else if(_conn.GetNotebooks(user).Count() > 0)
                 {
                     <MudMenuItem OnClick="() => AddToNotebook()" OnTouch="() => AddToNotebook()">
                         <span style=" font-size: 0.9em;">Seleccionar libreta</span>
@@ -147,7 +147,8 @@
         </div>
     </div>
 
-    <RadzenHtmlEditor @bind-Value=@Content @onkeypress=@(() => saved = false) ShowToolbar="edicion" Disabled="!edicion" style="min-height:70vh; max-height:70vh; margin-top:1.5em;">
+    <RadzenHtmlEditor @bind-Value=@Content ShowToolbar="edicion" Disabled="!edicion" style="min-height:70vh; max-height:70vh; margin-top:1.5em;">
+        <MudIconButton Icon="@Icons.Material.Rounded.Save" Variant="MudBlazor.Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveNote" />
         <RadzenHtmlEditorUndo Title="Deshacer" Shortcut="Ctrl+Z" />
         @* <RadzenHtmlEditorRedo Title="Rehacer" Shortcut="Ctrl+Y" /> *@
         @* <RadzenHtmlEditorSeparator /> *@
@@ -164,10 +165,6 @@
         <RadzenHtmlEditorOrderedList Title="Lista" />
         @* <RadzenHtmlEditorFontName Title="Fuente" Placeholder="Fuente" /> *@
         @* <RadzenHtmlEditorFontSize Title="Tamaño" Placeholder="Tamaño" /> *@
-        @if (!saved)
-        {
-            <MudIconButton Icon="@Icons.Material.Rounded.Save" Color="Color.Primary" Size="Size.Small" />
-        }
     </RadzenHtmlEditor>
     <p class="text-center text-muted mt-2" style="font-size:0.9em;">@(Note.Created.ToShortDateString()) - @Note.Created.ToShortTimeString()</p>
 }
@@ -179,10 +176,9 @@
     private MudColorPicker pickerfondo;
     private MudColorPicker pickertexto;
 
-    private string token;
+    private string user;
     private Note Note { get; set; }
     private bool edicion = true;
-    private bool saved = true;
     private int notesInNotebook { get; set; } = 0;
 
     private string Content
@@ -194,7 +190,6 @@
         set
         {
             Note.Content = value;
-            SaveNote();
         }
     }
     private string Name
@@ -206,7 +201,7 @@
         set
         {
             Note.Name = value;
-            SaveNote();
+            //SaveNote();
         }
     }
     private string BackgroundColor
@@ -274,17 +269,17 @@
 
     protected async override Task OnInitializedAsync()
     {
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
         if (string.IsNullOrWhiteSpace(Id))
         {
             Note = new Note()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    User = token,
+                    User = user,
                     Modified = DateTime.UtcNow,
                 };
 
-            Id = await LibraryService.CreateNote(token, FirebasePath, Note);
+            Id = await LibraryService.CreateNote(user, FirebasePath, Note);
             NavigationManager.NavigateTo($"/editnote/{Id}");
         }
         else
@@ -294,7 +289,7 @@
 
         if (!string.IsNullOrEmpty(Note.Notebook))
         {
-            var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook));
+            var notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Note.Notebook));
             CanChangePage = notes.Count() > 1;
         }
         notesInNotebook = CountNotes();
@@ -309,7 +304,7 @@
         else
         {
             var notebook = _conn.GetNotebook(Note.Notebook);
-            return _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id)).Count();
+            return _conn.GetNotes(user).Where(x => x.Notebook.Equals(notebook.Id)).Count();
         }
     }
 
@@ -317,7 +312,6 @@
     {
         Note.Modified = DateTime.UtcNow;
         _conn.GetConnection().Update(Note);
-        saved = true;
     }
 
     private async void DeleteNote()
@@ -328,14 +322,14 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
-            LibraryService.DeleteNote(token, FirebasePath, Note);
+            LibraryService.DeleteNote(user, FirebasePath, Note);
             NavigationManager.NavigateTo("library", true);
         }
     }
 
     private async void ChangePage(bool previous)
     {
-        var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook));
+        var notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Note.Notebook));
         int nextPosition = (Note.Position + 1) % notes.Count();
         if (previous)
         {
@@ -346,7 +340,7 @@
         CanChangePage = notes.Count() > 1;
         notesInNotebook = CountNotes();
         NavigationManager.NavigateTo($"/editnote/{Id}");
-        SynchronizationService.TrySyncLibrary(token);
+        SynchronizationService.TrySyncLibrary(user);
     }
 
     private async void OpenNotebook()
@@ -377,7 +371,7 @@
                 FullWidth = true
             };
         var dialog = await DialogService.ShowAsync<ChooseNotebook>("Libretas", parameters, options);
-        var result = dialog.Result;
+        await dialog.Result;
         NavigationManager.Refresh(true);
     }
 
@@ -385,7 +379,7 @@
     {
         var notebook = _conn.GetNotebook(Note.Notebook);
 
-        var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(Note.Notebook) && !x.Id.Equals(Note.Id) && x.Position > Note.Position).OrderBy(x => x.Position).ToList();
+        var notesinnotebook = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Note.Notebook) && !x.Id.Equals(Note.Id) && x.Position > Note.Position).OrderBy(x => x.Position).ToList();
         foreach (var notetoposition in notesinnotebook)
         {
             var position = notetoposition.Position - 1;

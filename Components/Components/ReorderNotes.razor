@@ -1,5 +1,6 @@
 ﻿@inject IDialogService DialogService
 @inject ConexionBBDD _conn
+@inject IJSRuntime JsRuntime
 
 <style>
     .mud-table-cell::before{display:none;}
@@ -52,13 +53,16 @@
     [Parameter] public string Id { get; set; }
 
     private List<Note> Notes { get; set; }
+    string user;
 
     void Cancel() => MudDialog.Cancel();
 
     protected async override void OnInitialized()
     {
         base.OnInitialized();
-        Notes = _conn.GetNotes().Where(x => x.Notebook.Equals(Id)).OrderBy(x => x.Position).ToList();
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
+        Notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(Id)).OrderBy(x => x.Position).ToList();
+        StateHasChanged();
     }
 
     private void PreviousPosition(Note note)

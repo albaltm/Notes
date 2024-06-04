@@ -1,10 +1,13 @@
-﻿@using AppNotes.Components.Pages
+﻿@using AppNotes.Components.Components
+@using AppNotes.Components.Pages
 @using AppNotes.Services
 @using Firebase.Database
 @using Firebase.Database.Query
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject ConexionBBDD _conn
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @inherits LayoutComponentBase
 
 <div class="page" style="height:100vh;">
@@ -15,13 +18,9 @@
 
         <MudLayout>
             <MudAppBar Elevation="1" Color="Color.Primary" Dense>
-                @* pantalla grande *@
-                @* <MudHidden Breakpoint="Breakpoint.SmAndUp" Invert> *@
-                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-                @* </MudHidden> *@
+                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
                 <MudSpacer />
                 
-                @* comun *@
                 <MudMenu Icon="@Icons.Material.Rounded.Person" Color="Color.Inherit" class="text-light">
                     <MudText Class="mx-auto py-2 text-center" Typo="Typo.h6"> Tema</MudText>
                     <MudMenuItem AutoClose="false" Style="max-width:70vw">
@@ -56,11 +55,14 @@
                             </MudToggleItem>
                         </MudToggleGroup>
                     </MudMenuItem>
-                    <MudMenuItem>
-                        <MudText>Editar perfil</MudText>
-                    </MudMenuItem>
+                    @if (!user.Equals("guest"))
+                    {
+                        <MudMenuItem OnClick="OpenDialog" OnTouch="OpenDialog">
+                            <MudText>Cambiar contraseña</MudText>
+                        </MudMenuItem>
+                    }
                     <MudMenuItem OnTouch="CerrarSesion" OnClick="CerrarSesion">
-                        <MudText>Cerrar sesión</MudText>
+                        <MudText>@(user.Equals("guest") ? "Salir" : "Cerrar sesión")</MudText>
                     </MudMenuItem>
                 </MudMenu>
             </MudAppBar>
@@ -80,14 +82,6 @@
                 </CascadingValue>
                 
             </MudMainContent>
-            @* <MudHidden Breakpoint="Breakpoint.SmAndUp">
-                <MudAppBar Bottom="true" Fixed="true" Color="@Color.Primary" Elevation="1" Dense>
-                    <MudLink Class="mx-auto" Href="/library"><MudIconButton Icon="@Icons.Material.Rounded.Book" Class="mx-auto text-light" /></MudLink>
-                    <MudIconButton Icon="@Icons.Material.Rounded.Checklist" Color="Color.Inherit" Class="mx-auto text-light" />
-                    <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Inherit" Class="mx-auto text-light" />
-                    <MudIconButton Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Inherit" Class="mx-auto text-light" />
-                </MudAppBar>
-            </MudHidden> *@
         </MudLayout>
     </main>
 </div>
@@ -128,12 +122,14 @@
     private MudThemeProvider _mudThemeProvider;
     MudTheme userTheme { get; set; }
     bool open = true;
+    string user = "";
 
     private string FirebasePath = "https://appnotes-d61d3-default-rtdb.firebaseio.com/";
     public bool Synchronized { get; set; } = true;
 
     protected override async void OnInitialized()
     {
+        user = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "user");
         var darkmode = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "darkmode");
         if (string.IsNullOrEmpty(darkmode))
         {
@@ -170,15 +166,55 @@
         catch { }
     }
 
+    private async void OpenDialog()
+    {
+        string email;
+        try
+        {
+            FirebaseClient client = new FirebaseClient(FirebasePath);
+            email = (await client.Child("users").OnceAsync<Usuario>()).Select(x => x.Object).Where(x => x.Id.Equals(user)).ToList().FirstOrDefault().Email;
+            client.Dispose();
+        }
+        catch
+        {
+            Snackbar.Add("No se ha podido procesar la solicitud. Vuelve a intentarlo más tarde", Severity.Error);
+            return;
+        }
+        var parameters = new DialogParameters<PasswordRecovery>();
+        parameters.Add(x => x.LoggedEmail, email);
+        MudBlazor.DialogOptions options = new MudBlazor.DialogOptions()
+            {
+                DisableBackdropClick = true,
+                CloseOnEscapeKey = false,
+                CloseButton = true,
+                MaxWidth = MaxWidth.ExtraSmall,
+                FullWidth = true
+            };
+        DialogService.Show<PasswordRecovery>("Recuperación de contraseña", parameters, options);
+    }
+
     public async void CerrarSesion()
     {
+        var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        if (token.Equals("guest"))
+        {
+            bool? result = await DialogService.ShowMessageBox(
+            "Cerrar sesión",
+            "¿Seguro? Se perderán todos tus datos",
+            yesText: "Confirmar", noText: "Cancelar");
+            if (result != true)
+            {
+                return;
+            }
+        }
+
         try
         {
             _conn.Vaciar();
         }
         catch { return; }
-        var token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        if (token.Equals("guest"))
+        
+        if (!token.Equals("guest"))
         {
             try
             {
@@ -188,6 +224,7 @@
             catch { }
         }
         await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", "");
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "user", "");
         NavigationManager.NavigateTo("/");
     }
 

@@ -1,4 +1,5 @@
 ﻿using AppNotes.Models;
+using Firebase.Auth;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace AppNotes.Services
 {
     public class RoutineService(ConexionBBDD _conn)
     {
-        public bool ShowToday(Routine routine, DateTime date)
+        public bool ShowToday(Routine routine, DateTime date, string user)
         {
             if (routine.Start > date)
             {
@@ -17,7 +18,7 @@ namespace AppNotes.Services
             }
             if (!routine.Active)
             {
-                var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(routine.Id) && x.Start == date).FirstOrDefault();
+                var registry = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(routine.Id) && x.Start == date).FirstOrDefault();
                 return registry != null;
             }
             if (routine.Frequency == FrequencyType.Everyday)
@@ -36,10 +37,10 @@ namespace AppNotes.Services
                 var monday = GetFirstDayOfWeek(date);
                 var sunday = monday.AddDays(6);
 
-                var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(routine.Id) && x.Start == date).FirstOrDefault();
+                var registry = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(routine.Id) && x.Start == date).FirstOrDefault();
                 if (registry != null) { return true; }
 
-                var achieved = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(routine.Id) && x.Start >= monday && x.Start <= sunday && x.Status == Status.Done).Count();
+                var achieved = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(routine.Id) && x.Start >= monday && x.Start <= sunday && x.Status == Status.Done).Count();
                 return achieved < routine.Period;
             }
             if (routine.Frequency == FrequencyType.Personalized)

@@ -40,7 +40,7 @@
             </ChildContent>
         </MudMenu>
         <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="() => SelectDate(SelectedDate.AddDays(-1))" Size="Size.Small" Style="width:1.5em; height:1.5em;" Class="my-auto d-inline-block" />
-        <MudDatePicker @bind-Date="selectedDate" DisableToolbar DisableUnderLine PickerVariant="PickerVariant.Dialog" AutoClose Color="Color.Primary" Style="width: 2.5em; max-height:0.1em; margin-left:-0.4em; margin-right: 1em; margin-top:0.9em;" Class="d-inline-block">
+        <MudDatePicker @ref="datepicker" @bind-Date="selectedDate" DisableToolbar DisableUnderLine PickerVariant="PickerVariant.Dialog" AutoClose Color="Color.Primary" Style="width: 2.5em; max-height:0.1em; margin-left:-0.4em; margin-right: 1em; margin-top:0.9em;" Class="d-inline-block">
             <PickerActions>
                 <MudButton Color="Color.Primary" Variant="MudBlazor.Variant.Filled" OnClick="() => SelectDate(DateTime.Today)" Class="mx-auto">Hoy</MudButton>
             </PickerActions>
@@ -75,7 +75,6 @@
                             <MudText Class="mx-4">@registry.Amount</MudText>
                             <MudIconButton Icon="@Icons.Material.Rounded.Add" OnClick="() => AddAmount(registry, false)" Style="width:1em; height:1em;" Disabled="registry.Start > DateTime.Today"></MudIconButton>
                         </div>
-
                     }
                 }
             </MudPaper>
@@ -110,7 +109,6 @@
                                 <MudText Class="mx-4">@registry.Amount</MudText>
                                 <MudIconButton Icon="@Icons.Material.Rounded.Add" OnClick="() => AddAmount(registry, false)" Style="width:1em; height:1em;" Disabled="registry.Start > DateTime.Today"></MudIconButton>
                             </div>
-
                         }
                     }
                 </MudPaper>
@@ -122,10 +120,11 @@
 <CreateButton />
 
 @code {
-    string token;
+    string user;
 
     List<RoutineRegistry> RoutineList { get; set; } = new List<RoutineRegistry>();
 
+    MudDatePicker datepicker;
     string searchText { get; set; } = "";
     bool completedExpanded = false;
     bool openItem = false;
@@ -140,11 +139,11 @@
     protected override async void OnInitialized()
     {
         base.OnInitialized();
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
 
         Recargar();
         StateHasChanged();
-        await SynchronizationService.TrySyncRoutines(token);
+        await SynchronizationService.TrySyncRoutines(user);
         Recargar();
         StateHasChanged();
     }
@@ -152,16 +151,17 @@
     private void Recargar()
     {
         RoutineList = new List<RoutineRegistry>();
-        var routines = _conn.GetRoutines().OrderByDescending(x => x.Priority);
+        var routines = _conn.GetRoutines(user).OrderByDescending(x => x.Priority);
         foreach (var routine in routines)
         {
-            if (RoutineService.ShowToday(routine, SelectedDate))
+            if (RoutineService.ShowToday(routine, SelectedDate, user))
             {
-                var registry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(routine.Id)).ToList().FirstOrDefault();
+                var registry = _conn.GetRoutinesRegistry(user).Where(x => x.Start == SelectedDate && x.Routine.Equals(routine.Id)).ToList().FirstOrDefault();
                 if (registry == null)
                 {
                     registry = new RoutineRegistry()
                         {
+                            Id = Guid.NewGuid().ToString(),
                             Routine = routine.Id,
                             User = routine.User,
                             Color = routine.Color,
@@ -182,17 +182,18 @@
 
     private void SelectDate(DateTime date)
     {
+        datepicker.Close();
         SelectedDate = date.Date;
         Recargar();
     }
 
     private async void ToggleDone (RoutineRegistry r, Status status)
     {
-        var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+        var registry = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
         if (registry == null)
         {
-            await ToDoService.CreateRoutineRegistry(token, FirebasePath, r);
-            registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+            await ToDoService.CreateRoutineRegistry(user, FirebasePath, r);
+            registry = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
         }
         registry.Modified = DateTime.UtcNow;
         registry.Status = status;
@@ -204,11 +205,11 @@
     {
         if (!canAdd) { return; }
         canAdd = false;
-        var registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+        var registry = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
         if (registry == null)
         {
-            await ToDoService.CreateRoutineRegistry(token, FirebasePath, r);
-            registry = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
+            await ToDoService.CreateRoutineRegistry(user, FirebasePath, r);
+            registry = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(r.Routine) && x.Start == selectedDate).FirstOrDefault();
         }
         var routine = _conn.GetRoutine(registry.Routine);
         if (sustract)
@@ -282,10 +283,10 @@
         if (openItem) { return; }
         openItem = true;
 
-        var existingRegistry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(registry.Routine)).FirstOrDefault();
+        var existingRegistry = _conn.GetRoutinesRegistry(user).Where(x => x.Start == SelectedDate && x.Routine.Equals(registry.Routine)).FirstOrDefault();
         if (existingRegistry == null)
         {
-            var id = await ToDoService.CreateRoutineRegistry(token, FirebasePath, registry);
+            var id = await ToDoService.CreateRoutineRegistry(user, FirebasePath, registry);
             existingRegistry = _conn.GetRoutineRegistry(id);
         }
 

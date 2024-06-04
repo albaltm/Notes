@@ -45,7 +45,7 @@
 </MudDialog>
 @code {
     List<Notebook> Notebooks { get; set; } = new List<Notebook>();
-    string token;
+    string user;
 
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
     [Parameter]
@@ -54,8 +54,8 @@
     protected async override void OnInitialized()
     {
         base.OnInitialized();
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        Notebooks = _conn.GetNotebooks();
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
+        Notebooks = _conn.GetNotebooks(user);
         StateHasChanged();
     }
 
@@ -65,7 +65,7 @@
         var note = _conn.GetNote(Note);
         note.Modified = DateTime.UtcNow;
         note.Notebook = notebook.Id;
-        var position = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id)).Count();
+        var position = _conn.GetNotes(user).Where(x => x.Notebook.Equals(notebook.Id)).Count();
         note.Position = position;
 
         _conn.Conn.Update(notebook);

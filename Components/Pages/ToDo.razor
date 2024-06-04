@@ -57,7 +57,7 @@
                         <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;" class="m-0">@todo.Text</p>
                         <p class="m-0">@todo.Start.ToShortDateString() @if(todo.Start.TimeOfDay != todo.Start.Date.TimeOfDay){<span>   -   @todo.Start.ToShortTimeString()</span>}</p>
                     </div>
-                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    @if (_conn.GetSubToDos(user).Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
                     {
                         <span class="m-0 mx-3 my-auto p-0">
                             <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
@@ -114,7 +114,7 @@
                             <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp: 2; word-wrap:anywhere;" class="m-0 w-100">@todo.Text</p>
                         </div>
                     }
-                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    @if (_conn.GetSubToDos(user).Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
                     {
                         <span class="m-0 mx-3 my-auto p-0">
                             <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
@@ -178,7 +178,7 @@
                         <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;" class="m-0">@todo.Text</p>
                         <p class="m-0">@todo.Start.ToShortDateString() @if(todo.Start.TimeOfDay != todo.Start.Date.TimeOfDay){<span>   -   @todo.Start.ToShortTimeString()</span>}</p>
                     </div>
-                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    @if (_conn.GetSubToDos(user).Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
                     {
                         <span class="m-0 mx-3 my-auto p-0">
                             <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
@@ -223,7 +223,7 @@
                         <span style="color: @todo.Color;"><MudIcon Icon="@todo.Icon" Class="m-0 me-2 my-auto p-0" Size="Size.Small" /></span>
                     </div>
                     <p style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; word-wrap:anywhere;" class="m-0 w-100">@todo.Text</p>
-                    @if (_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
+                    @if (_conn.GetSubToDos(user).Where(x => x.ToDo.Equals(todo.Id)).Count() > 0)
                     {
                         <span class="m-0 mx-3 my-auto p-0">
                             <MudIconButton OnClick="() => ViewSubTodos(todo)" Icon="@Icons.Material.Rounded.Checklist" Style="width:1em; height:1em;" />
@@ -231,7 +231,7 @@
                     }
                     <MudMenu ActivationEvent="MouseEvent.RightClick">
                         <ActivatorContent>
-                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" Disabled="_conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id)).Count()>0" />
+                            <MudIconButton OnClick="() => ToggleDone(todo, null)" Icon="@(todo.Status == Status.ToDo ? @Icons.Material.Rounded.CheckBoxOutlineBlank : todo.Status == Status.InProgress ? @Icons.Material.Rounded.Timelapse : @Icons.Material.Rounded.CheckBox)" Class="m-0 p-0" Disabled="_conn.GetSubToDos(user).Where(x => x.ToDo.Equals(todo.Id)).Count()>0" />
                         </ActivatorContent>
                         <ChildContent>
                             @if (todo.Status != Status.ToDo)
@@ -256,7 +256,7 @@
 <CreateButton />
 
 @code {
-    string token;
+    string user;
 
     List<ToDoItem> ListToDo { get; set; } = new List<ToDoItem>();
     List<ToDoItem> PastToDo { get; set; } = new List<ToDoItem>();
@@ -270,11 +270,11 @@
     protected override async void OnInitialized()
     {
         base.OnInitialized();
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        ListToDo = _conn.GetToDos();
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
+        ListToDo = _conn.GetToDos(user);
         Recargar();
         StateHasChanged();
-        await SynchronizationService.TrySyncToDo(token);
+        await SynchronizationService.TrySyncToDo(user);
         Recargar();
         StateHasChanged();
     }
@@ -321,7 +321,7 @@
         }
         if (todo.Status == Status.Done)
         {
-            var subtodos = _conn.GetSubToDos().Where(x => x.ToDo.Equals(todo.Id));
+            var subtodos = _conn.GetSubToDos(user).Where(x => x.ToDo.Equals(todo.Id));
             foreach (var subtodo in subtodos)
             {
                 subtodo.Status = Status.Done;
@@ -375,7 +375,7 @@
             };
         var dialog = await DialogService.ShowAsync<ViewSubTodos>("Subtareas", parameters, options);
         await dialog.Result;
-        ListToDo = _conn.GetToDos();
+        ListToDo = _conn.GetToDos(user);
         Recargar();
         StateHasChanged();
     }

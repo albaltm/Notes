@@ -13,17 +13,16 @@ namespace AppNotes.Services
 {
     public class LibraryService(ConexionBBDD _conn)
     {
-        public async Task<string> CreateNote(string token, string FirebasePath, Note note)
+        public async Task<string> CreateNote(string user, string FirebasePath, Note note)
         {
-            if (!token.Equals("guest"))
+            if (!user.Equals("guest"))
             {
                 try
                 {
                     FirebaseClient client = new FirebaseClient(FirebasePath);
-                    var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
                     var notefirebase = await client.Child("note").PostAsync(note);
                     note.Id = notefirebase.Key;
-                    note.User = userId;
+                    note.User = user;
                     await client.Child("note").Child(notefirebase.Key).PutAsync(note);
                     client.Dispose();
                 }
@@ -32,7 +31,8 @@ namespace AppNotes.Services
                     var createQueue = new CreateQueue()
                     {
                         Id = note.Id,
-                        Type = DocumentType.Note
+                        Type = DocumentType.Note,
+                        User = user,
                     };
                     _conn.Conn.Insert(createQueue);
                 }
@@ -40,17 +40,16 @@ namespace AppNotes.Services
             _conn.GetConnection().Insert(note);
             return note.Id;
         }
-        public async Task<string> CreateNotebook(string token, string FirebasePath, Notebook notebook)
+        public async Task<string> CreateNotebook(string user, string FirebasePath, Notebook notebook)
         {
-            if (!token.Equals("guest"))
+            if (!user.Equals("guest"))
             {
                 try
                 {
                     FirebaseClient client = new FirebaseClient(FirebasePath);
-                    var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
                     var notefirebookbase = await client.Child("notebook").PostAsync(notebook);
                     notebook.Id = notefirebookbase.Key;
-                    notebook.User = userId;
+                    notebook.User = user;
                     await client.Child("notebook").Child(notefirebookbase.Key).PutAsync(notebook);
                     client.Dispose();
                 }
@@ -59,7 +58,8 @@ namespace AppNotes.Services
                     var createQueue = new CreateQueue()
                     {
                         Id = notebook.Id,
-                        Type = DocumentType.Notebook
+                        Type = DocumentType.Notebook,
+                        User = user,
                     };
                     _conn.Conn.Insert(createQueue);
                 }
@@ -67,9 +67,9 @@ namespace AppNotes.Services
             _conn.GetConnection().Insert(notebook);
             return notebook.Id;
         }
-        public async Task DeleteNote(string token, string FirebasePath, Note note)
+        public async Task DeleteNote(string user, string FirebasePath, Note note)
         {
-            var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id)).OrderBy(x => x.Position).ToList();
+            var notesinnotebook = _conn.GetNotes(user).Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id)).OrderBy(x => x.Position).ToList();
             var num = 0;
             foreach (var notetoposition in notesinnotebook)
             {
@@ -92,7 +92,7 @@ namespace AppNotes.Services
                 }
             }
 
-            if (!token.Equals("guest"))
+            if (!user.Equals("guest"))
             {
                 var createqueueitem = _conn.GetCreateQueue().Where(x => x.Type == DocumentType.Note && x.Id.Equals(note.Id)).FirstOrDefault();
                 if (createqueueitem != null)
@@ -110,16 +110,17 @@ namespace AppNotes.Services
                     DeleteQueue item = new DeleteQueue()
                     {
                         Id = note.Id,
-                        Type = DocumentType.Note
+                        Type = DocumentType.Note,
+                        User = user,
                     };
                     _conn.GetConnection().Insert(item);
                 }
             }
             _conn.GetConnection().Delete(note);
         }
-        public async Task DeleteNotebook(string token, string FirebasePath, Notebook notebook)
+        public async Task DeleteNotebook(string user, string FirebasePath, Notebook notebook)
         {
-            var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id)).ToList();
+            var notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(notebook.Id)).ToList();
             foreach (var note in notes)
             {
                 note.Modified = DateTime.UtcNow;
@@ -128,7 +129,7 @@ namespace AppNotes.Services
                 _conn.GetConnection().Update(note);
             }
 
-            if (!token.Equals("guest"))
+            if (!user.Equals("guest"))
             {
                 var createqueueitem = _conn.GetCreateQueue().Where(x => x.Type == DocumentType.Notebook && x.Id.Equals(notebook.Id)).FirstOrDefault();
                 if (createqueueitem != null)
@@ -146,7 +147,8 @@ namespace AppNotes.Services
                     DeleteQueue item = new DeleteQueue()
                     {
                         Id = notebook.Id,
-                        Type = DocumentType.Notebook
+                        Type = DocumentType.Notebook,
+                        User = user,
                     };
                     _conn.GetConnection().Insert(item);
                 }

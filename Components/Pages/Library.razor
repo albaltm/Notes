@@ -108,13 +108,13 @@
     private List<Notebook> Notebooks { get; set; }
     private List<Note> NotesFilter { get; set; }
     private List<Notebook> NotebooksFilter { get; set; }
-    string token;
+    string user;
 
     string searchText = "";
 
     protected async override void OnInitialized()
     {
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
 
         Recargar(true);
 
@@ -126,14 +126,14 @@
             NavigationManager.NavigateTo("/library");
         }
 
-        await SynchronizationService.TrySync(token);
+        await SynchronizationService.TrySync(user);
         Recargar(false);
     }
 
     private void Recargar(bool resetFilter)
     {
-        Notes = _conn.GetNotes().OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
-        Notebooks = _conn.GetNotebooks().OrderByDescending(x => x.Modified).ToList();
+        Notes = _conn.GetNotes(user).OrderByDescending(x => x.Favorite).ThenByDescending(x => x.Modified).ToList();
+        Notebooks = _conn.GetNotebooks(user).OrderByDescending(x => x.Modified).ToList();
 
         if (resetFilter)
         {
@@ -151,7 +151,7 @@
 
     public void AccessNotebook(Notebook notebook)
     {
-        var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id));
+        var notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(notebook.Id));
         if (notes.Count() > 0)
         {
             if (string.IsNullOrEmpty(notebook.Bookmark))
@@ -176,7 +176,7 @@
         _conn.Conn.Update(note);
         NotesFilter = NotesFilter.OrderByDescending(x => x.Favorite).ToList();
         Recargar(false);
-        await SynchronizationService.TrySyncLibrary(token);
+        await SynchronizationService.TrySyncLibrary(user);
         Recargar(false);
     }
 
@@ -205,11 +205,11 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
-            LibraryService.DeleteNotebook(token, FirebasePath, notebook);
+            LibraryService.DeleteNotebook(user, FirebasePath, notebook);
             Recargar(false); 
             NotebooksFilter.Remove(notebook);
 
-            await SynchronizationService.TrySyncLibrary(token);
+            await SynchronizationService.TrySyncLibrary(user);
             StateHasChanged();
         }
     }
@@ -222,11 +222,11 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
-            await LibraryService.DeleteNote(token, FirebasePath, note);
+            await LibraryService.DeleteNote(user, FirebasePath, note);
             Recargar(false);
             NotesFilter.Remove(note);
 
-            await SynchronizationService.TrySyncLibrary(token);
+            await SynchronizationService.TrySyncLibrary(user);
             StateHasChanged();
         }
     }
@@ -252,7 +252,7 @@
     {
         var notebook = _conn.GetNotebook(note.Notebook);
         
-        var notesinnotebook = _conn.GetNotes().Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id) && x.Position > note.Position).OrderBy(x => x.Position).ToList();
+        var notesinnotebook = _conn.GetNotes(user).Where(x => x.Notebook.Equals(note.Notebook) && !x.Id.Equals(note.Id) && x.Position > note.Position).OrderBy(x => x.Position).ToList();
         foreach (var notetoposition in notesinnotebook)
         {
             var position = notetoposition.Position -1;

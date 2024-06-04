@@ -11,17 +11,16 @@ namespace AppNotes.Services
 {
     public class EventService(ConexionBBDD _conn)
     {
-        public async Task<string> CreateEvent(string token, string FirebasePath, Event evento)
+        public async Task<string> CreateEvent(string user, string FirebasePath, Event evento)
         {
-            if (!token.Equals("guest"))
+            if (!user.Equals("guest"))
             {
                 try
                 {
                     FirebaseClient client = new FirebaseClient(FirebasePath);
-                    var userId = (await client.Child("userauthentication").OnceAsync<UserAuthentication>()).Select(x => x.Object).Where(x => x.Token.Equals(token)).ToList().FirstOrDefault()?.User;
                     var eventfirebase = await client.Child("event").PostAsync(evento);
                     evento.Id = eventfirebase.Key;
-                    evento.User = userId;
+                    evento.User = user;
 
                     await client.Child("event").Child(eventfirebase.Key).PutAsync(evento);
                     client.Dispose();
@@ -31,7 +30,8 @@ namespace AppNotes.Services
                     var createQueue = new CreateQueue()
                     {
                         Id = evento.Id,
-                        Type = DocumentType.Event
+                        Type = DocumentType.Event,
+                        User = user,
                     };
                     _conn.Conn.Insert(createQueue);
                 }
@@ -39,9 +39,9 @@ namespace AppNotes.Services
             _conn.GetConnection().Insert(evento);
             return evento.Id;
         }
-        public async Task DeleteEvent(string token, string FirebasePath, Event evento)
+        public async Task DeleteEvent(string user, string FirebasePath, Event evento)
         {
-            if (!token.Equals("guest"))
+            if (!user.Equals("guest"))
             {
                 var createqueueitem = _conn.GetCreateQueue().Where(x => x.Type == DocumentType.Event && x.Id.Equals(evento.Id)).FirstOrDefault();
                 if (createqueueitem != null)
@@ -59,7 +59,8 @@ namespace AppNotes.Services
                     DeleteQueue item = new DeleteQueue()
                     {
                         Id = evento.Id,
-                        Type = DocumentType.Event
+                        Type = DocumentType.Event,
+                        User = user
                     };
                     _conn.Conn.Insert(item);
                 }

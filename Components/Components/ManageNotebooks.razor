@@ -54,13 +54,13 @@
 </MudDialog>
 @code {
     List<Notebook> Notebooks { get; set; } = new List<Notebook>();
-    string token;
+    string user;
 
     protected async override void OnInitialized()
     {
         base.OnInitialized();
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        Notebooks = _conn.GetNotebooks();
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
+        Notebooks = _conn.GetNotebooks(user);
         StateHasChanged();
     }
 
@@ -82,7 +82,7 @@
             };
         var dialog = await DialogService.ShowAsync<EditNotebook>("Libreta", parameters, options);
         var result = await dialog.Result;
-        Notebooks = _conn.GetNotebooks();
+        Notebooks = _conn.GetNotebooks(user);
         StateHasChanged();
     }
 
@@ -94,7 +94,7 @@
             yesText: "Si", noText: "Cancelar");
         if (result == true)
         {
-            var notes = _conn.GetNotes().Where(x => x.Notebook.Equals(notebook.Id));
+            var notes = _conn.GetNotes(user).Where(x => x.Notebook.Equals(notebook.Id));
             if (notes.Count() > 0)
             {
                 bool? resultNotes = await DialogService.ShowMessageBox(
@@ -106,15 +106,15 @@
 
                     foreach (var note in notes)
                     {
-                        await LibraryService.DeleteNote(token, FirebasePath, note);
+                        await LibraryService.DeleteNote(user, FirebasePath, note);
                     }
                 }
             }
             
-            await LibraryService.DeleteNotebook(token, FirebasePath, notebook);
+            await LibraryService.DeleteNotebook(user, FirebasePath, notebook);
             Notebooks.Remove(notebook);
 
-            await SynchronizationService.TrySyncLibrary(token);
+            await SynchronizationService.TrySyncLibrary(user);
             StateHasChanged();
         }
     }

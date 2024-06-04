@@ -64,6 +64,7 @@
                 authentication.Token = firebaseauth.Key;
                 await client.Child("userauthentication").Child(firebaseauth.Key).PutAsync(authentication);
                 await JSRuntime.InvokeVoidAsync("localStorage.setItem", "token", authentication.Token);
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "user", authentication.User);
 
                 client.Dispose();
                 NavigationManager.NavigateTo("/");

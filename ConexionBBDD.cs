@@ -2,6 +2,7 @@
 using System.Data.Common;
 using System.Diagnostics;
 using AppNotes.Models;
+using Firebase.Auth;
 using Microsoft.Maui.ApplicationModel.Communication;
 using SQLite;
 
@@ -21,7 +22,6 @@ public class ConexionBBDD
         Conn.CreateTable<SubToDo>();
         Conn.CreateTable<Routine>();
         Conn.CreateTable<RoutineRegistry>();
-        //Conn.DeleteAll<RoutineRegistry>();
     }
     public SQLiteConnection GetConnection()
     {
@@ -51,26 +51,25 @@ public class ConexionBBDD
         var note = Conn.CreateCommand($"select * from Note WHERE id = '{id}'").ExecuteDeferredQuery<Note>().FirstOrDefault();
         return note;
     }
-    public List<Note> GetNotes()
+    public List<Note> GetNotes(string user)
     {
         List<Note> notes = new List<Note>();
-        var query = Conn.CreateCommand("select * from Note").ExecuteDeferredQuery<Note>().ToList();
+        var query = Conn.CreateCommand($"select * from Note WHERE user = '{user}'").ExecuteDeferredQuery<Note>().ToList();
         foreach (var note in query)
         {
             notes.Add(note);
         }
         return notes;
     }
-
     public Notebook GetNotebook(string id)
     {
         var notebook = Conn.CreateCommand($"select * from Notebook WHERE id = '{id}'").ExecuteDeferredQuery<Notebook>().FirstOrDefault();
         return notebook;
     }
-    public List<Notebook> GetNotebooks()
+    public List<Notebook> GetNotebooks(string user)
     {
         List<Notebook> notebooks = new List<Notebook>();
-        var query = Conn.CreateCommand("select * from Notebook").ExecuteDeferredQuery<Notebook>();
+        var query = Conn.CreateCommand($"select * from Notebook WHERE user = '{user}'").ExecuteDeferredQuery<Notebook>();
         foreach (var notebook in query)
         {
             notebooks.Add(notebook);
@@ -82,10 +81,10 @@ public class ConexionBBDD
         var evento = Conn.CreateCommand($"select * from event WHERE id = '{id}'").ExecuteDeferredQuery<Event>().FirstOrDefault();
         return evento;
     }
-    public List<Event> GetEvents()
+    public List<Event> GetEvents(string user)
     {
         List<Event> events = new List<Event>();
-        var query = Conn.CreateCommand("select * from event").ExecuteDeferredQuery<Event>().ToList();
+        var query = Conn.CreateCommand($"select * from event WHERE user = '{user}'").ExecuteDeferredQuery<Event>().ToList();
         foreach (var evento in query)
         {
             events.Add(evento);
@@ -97,10 +96,10 @@ public class ConexionBBDD
         var toDo = Conn.CreateCommand($"select * from todoitem WHERE id = '{id}'").ExecuteDeferredQuery<ToDoItem>().FirstOrDefault();
         return toDo;
     }
-    public List<ToDoItem> GetToDos()
+    public List<ToDoItem> GetToDos(string user)
     {
         List<ToDoItem> toDos = new List<ToDoItem>();
-        var query = Conn.CreateCommand("select * from todoitem").ExecuteDeferredQuery<ToDoItem>().ToList();
+        var query = Conn.CreateCommand($"select * from todoitem WHERE user = '{user}'").ExecuteDeferredQuery<ToDoItem>().ToList();
         foreach (var toDo in query)
         {
             toDos.Add(toDo);
@@ -112,10 +111,10 @@ public class ConexionBBDD
         var subToDo = Conn.CreateCommand($"select * from subtodo WHERE id = '{id}'").ExecuteDeferredQuery<SubToDo>().FirstOrDefault();
         return subToDo;
     }
-    public List<SubToDo> GetSubToDos()
+    public List<SubToDo> GetSubToDos(string user)
     {
         List<SubToDo> subToDos = new List<SubToDo>();
-        var query = Conn.CreateCommand("select * from subtodo").ExecuteDeferredQuery<SubToDo>().ToList();
+        var query = Conn.CreateCommand($"select * from subtodo WHERE user = '{user}'").ExecuteDeferredQuery<SubToDo>().ToList();
         foreach (var subToDo in query)
         {
             subToDos.Add(subToDo);
@@ -127,10 +126,10 @@ public class ConexionBBDD
         var routine = Conn.CreateCommand($"select * from routine WHERE id = '{id}'").ExecuteDeferredQuery<Routine>().FirstOrDefault();
         return routine;
     }
-    public List<Routine> GetRoutines()
+    public List<Routine> GetRoutines(string user)
     {
         List<Routine> routines = new List<Routine>();
-        var query = Conn.CreateCommand("select * from routine").ExecuteDeferredQuery<Routine>().ToList();
+        var query = Conn.CreateCommand($"select * from routine WHERE user = '{user}'").ExecuteDeferredQuery<Routine>().ToList();
         foreach (var routine in query)
         {
             routines.Add(routine);
@@ -142,10 +141,10 @@ public class ConexionBBDD
         var routineregistry = Conn.CreateCommand($"select * from routineregistry WHERE id = '{id}'").ExecuteDeferredQuery<RoutineRegistry>().FirstOrDefault();
         return routineregistry;
     }
-    public List<RoutineRegistry> GetRoutinesRegistry()
+    public List<RoutineRegistry> GetRoutinesRegistry(string user)
     {
         List<RoutineRegistry> routines = new List<RoutineRegistry>();
-        var query = Conn.CreateCommand("select * from routineregistry").ExecuteDeferredQuery<RoutineRegistry>().ToList();
+        var query = Conn.CreateCommand($"select * from routineregistry WHERE user = '{user}'").ExecuteDeferredQuery<RoutineRegistry>().ToList();
         foreach (var registry in query)
         {
             routines.Add(registry);

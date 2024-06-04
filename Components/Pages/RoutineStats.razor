@@ -26,90 +26,94 @@
     }
 </style>
 
-<div class="d-flex justify-content-between">
-    <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="GoBack" Class="flex-shrink-1" />
-    <span class="d-flex my-auto me-3" style="flex-direction:row;">
-        <span class="my-auto" style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;">
-            <MudText Align="Align.Center" Typo="Typo.h6"><span style="color:@Routine.Color;"><MudIcon Icon="@Routine.Icon" Size="Size.Small" /></span> @Routine.Text</MudText>
+@if (Routine != null)
+{
+    <div class="d-flex justify-content-between">
+        <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" OnClick="GoBack" Class="flex-shrink-1" />
+        <span class="d-flex my-auto me-3" style="flex-direction:row;">
+            <span class="my-auto" style="overflow: hidden; display: -webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; word-wrap:anywhere;">
+                <MudText Align="Align.Center" Typo="Typo.h6"><span style="color:@Routine.Color;"><MudIcon Icon="@Routine.Icon" Size="Size.Small" /></span> @Routine.Text</MudText>
+            </span>
         </span>
-    </span>
-    
-    <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Primary" Class="flex-shrink-1" Variant="MudBlazor.Variant.Filled" Size="Size.Small" Style="width:3em;" OnClick="GoToRoutine" />
-</div>
 
-<MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Racha</MudText>
-
-<div class="d-flex justify-space-around w-100" style="height:7em;">
-    <div>
-        <MudText Align="Align.Center" Typo="Typo.h5" Color="Color.Primary" Class="fw-bold">@rachaActual</MudText>
-        <MudText Align="Align.Center">Actual</MudText>
+        <MudIconButton Icon="@Icons.Material.Rounded.Autorenew" Color="Color.Primary" Class="flex-shrink-1" Variant="MudBlazor.Variant.Filled" Size="Size.Small" Style="width:3em;" OnClick="GoToRoutine" />
     </div>
-    <div>
-        <MudText Align="Align.Center" Typo="Typo.h5" Color="Color.Primary" Class="fw-bold">@mejorRacha</MudText>
-        <MudText Align="Align.Center">Mejor</MudText>
+
+    <MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Racha</MudText>
+
+    <div class="d-flex justify-space-around w-100" style="height:7em;">
+        <div>
+            <MudText Align="Align.Center" Typo="Typo.h5" Color="Color.Primary" Class="fw-bold">@rachaActual</MudText>
+            <MudText Align="Align.Center">Actual</MudText>
+        </div>
+        <div>
+            <MudText Align="Align.Center" Typo="Typo.h5" Color="Color.Primary" Class="fw-bold">@mejorRacha</MudText>
+            <MudText Align="Align.Center">Mejor</MudText>
+        </div>
     </div>
-</div>
 
-<MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Conseguido</MudText>
-<MudDivider/>
-<div class="d-flex hoverclass p-2" @onclick="FilterWeek">
-    <MudText Class="flex-grow-1">Esta semana</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisWeek</MudText>
-    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisWeek</MudText>
-</div>
-<MudDivider />
-<div class="d-flex hoverclass p-2" @onclick="FilterMonth">
-    <MudText Class="flex-grow-1">Este mes</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisMonth</MudText>
-    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisMonth</MudText>
-</div>
-<MudDivider />
-<div class="d-flex hoverclass p-2" @onclick="FilterYear">
-    <MudText Class="flex-grow-1">Este año</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisYear</MudText>
-    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisYear</MudText>
-</div>
-<MudDivider />
-<div class="d-flex hoverclass p-2" @onclick="FilterTotal">
-    <MudText Class="flex-grow-1">Total</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completed</MudText>
-    <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
-    <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@total</MudText>
-</div>
+    <MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Conseguido</MudText>
+    <MudDivider />
+    <div class="d-flex hoverclass p-2" @onclick="FilterWeek">
+        <MudText Class="flex-grow-1">Esta semana</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisWeek</MudText>
+        <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisWeek</MudText>
+    </div>
+    <MudDivider />
+    <div class="d-flex hoverclass p-2" @onclick="FilterMonth">
+        <MudText Class="flex-grow-1">Este mes</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisMonth</MudText>
+        <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisMonth</MudText>
+    </div>
+    <MudDivider />
+    <div class="d-flex hoverclass p-2" @onclick="FilterYear">
+        <MudText Class="flex-grow-1">Este año</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completedThisYear</MudText>
+        <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@thisYear</MudText>
+    </div>
+    <MudDivider />
+    <div class="d-flex hoverclass p-2" @onclick="FilterTotal">
+        <MudText Class="flex-grow-1">Total</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@completed</MudText>
+        <MudText Style="width: 1em;" Class="flex-shrink-1" Align="Align.Center" Color="Color.Primary">/</MudText>
+        <MudText Style="width: 3em;" Class="flex-shrink-1" Align="Align.Center">@total</MudText>
+    </div>
 
-@if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
-{
-    <MudChart ChartOptions="@(new() { ChartPalette = new[] { "rgba(66, 255, 201, 0.8)","rgba(162, 77, 255, 0.8)", "rgba(66, 170, 255, 0.8)" } })" ChartType="ChartType.Pie" Width="10em" Height="10em" LegendPosition="Position.Right" InputData="@data" InputLabels="@labels" Style="margin: 4em 0;" />
-}
-@if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
-{
-    <MudChart ChartOptions="@(new() { ChartPalette = new[] { "rgba(66, 255, 201, 0.8)", "rgba(66, 170, 255, 0.8)" } })" ChartType="ChartType.Pie" Width="10em" Height="10em" LegendPosition="Position.Right" InputData="@datafilter" InputLabels="@labelsfilter" Style="margin: 4em 0;" />
-}
-
-<MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Historial</MudText>
-<div class="d-flex">
     @if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
     {
-        <MudDatePicker PickerVariant="PickerVariant.Static" Class="mx-auto" IsDateDisabledFunc="@((DateTime dt)=>(dt>DateTime.Today || RoutineService.ShowToday(Routine,dt) == false))"
-                       @bind-Date="SelectedDate" AdditionalDateClassesFunc="@((DateTime dt)=>(Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.ToDo ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.Done ? "conseguido" : (Registries.Where(x => x.Start == dt).FirstOrDefault() == null && RoutineService.ShowToday(Routine,dt) == true) ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.InProgress ? "intentado" : ""))" />
+        <MudChart ChartOptions="@(new() { ChartPalette = new[] { "rgba(66, 255, 201, 0.8)","rgba(162, 77, 255, 0.8)", "rgba(66, 170, 255, 0.8)" } })" ChartType="ChartType.Pie" Width="10em" Height="10em" LegendPosition="Position.Right" InputData="@data" InputLabels="@labels" Style="margin: 4em 0;" />
     }
     @if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
     {
-        <MudDatePicker PickerVariant="PickerVariant.Static" Class="mx-auto" IsDateDisabledFunc="@((DateTime dt)=>(dt>DateTime.Today || RoutineService.ShowToday(Routine,dt) == false))"
-                       AdditionalDateClassesFunc="@((DateTime dt)=>(Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.ToDo ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.Done ? "conseguido" : (Registries.Where(x => x.Start == dt).FirstOrDefault() == null && RoutineService.ShowToday(Routine,dt) == true) ? "fallido" : ""))"
-                       @bind-Date="SelectedDate"/>
+        <MudChart ChartOptions="@(new() { ChartPalette = new[] { "rgba(66, 255, 201, 0.8)", "rgba(66, 170, 255, 0.8)" } })" ChartType="ChartType.Pie" Width="10em" Height="10em" LegendPosition="Position.Right" InputData="@datafilter" InputLabels="@labelsfilter" Style="margin: 4em 0;" />
     }
-</div>
+
+    <MudText Align="Align.Center" Typo="Typo.h6" Class="mt-3 mb-5">Historial</MudText>
+    <div class="d-flex">
+        @if (Routine.Evaluation == EvaluationType.Amount && Routine.AmountModifier != AmountModifier.NoGoal)
+        {
+            <MudDatePicker PickerVariant="PickerVariant.Static" Class="mx-auto" IsDateDisabledFunc="@((DateTime dt)=>(dt>DateTime.Today || RoutineService.ShowToday(Routine,dt, user) == false))"
+                           @bind-Date="SelectedDate" AdditionalDateClassesFunc="@((DateTime dt)=>(Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.ToDo ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.Done ? "conseguido" : (Registries.Where(x => x.Start == dt).FirstOrDefault() == null && RoutineService.ShowToday(Routine,dt, user) == true) ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.InProgress ? "intentado" : ""))" />
+        }
+        @if (Routine.Evaluation == EvaluationType.Completed || Routine.AmountModifier == AmountModifier.NoGoal)
+        {
+            <MudDatePicker PickerVariant="PickerVariant.Static" Class="mx-auto" IsDateDisabledFunc="@((DateTime dt)=>(dt>DateTime.Today || RoutineService.ShowToday(Routine,dt, user) == false))"
+                           AdditionalDateClassesFunc="@((DateTime dt)=>(Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.ToDo ? "fallido" : Registries.Where(x => x.Start == dt).FirstOrDefault()?.Status == Status.Done ? "conseguido" : (Registries.Where(x => x.Start == dt).FirstOrDefault() == null && RoutineService.ShowToday(Routine,dt, user) == true) ? "fallido" : ""))"
+                           @bind-Date="SelectedDate" />
+        }
+    </div>
+}
+
 
 @code {
     [Parameter] public string? Id { get; set; }
 
     private Routine Routine { get; set; }
     private List<RoutineRegistry> Registries { get; set; }
-    string token;
+    string user;
     private DateTime selectedDate = DateTime.Today;
     private DateTime? SelectedDate
     {
@@ -119,7 +123,7 @@
             if (value != null)
             {
                 selectedDate = value.Value;
-                var existingRegistry = _conn.GetRoutinesRegistry().Where(x => x.Start == selectedDate && x.Routine.Equals(Routine.Id)).FirstOrDefault();
+                var existingRegistry = _conn.GetRoutinesRegistry(user).Where(x => x.Start == selectedDate && x.Routine.Equals(Routine.Id)).FirstOrDefault();
                 OpenRegistry(existingRegistry);
             }
         }
@@ -148,14 +152,15 @@
     protected async override void OnInitialized()
     {
         base.OnInitialized();
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
         Routine = _conn.GetRoutine(Id);
-        Registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Id)).OrderBy(x => x.Start).ToList();
+        Registries = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(Id)).OrderBy(x => x.Start).ToList();
         CalculateStats();
         FilterTotal();
+        StateHasChanged();
 
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        await SynchronizationService.TrySyncRoutines(token);
-        Registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Id)).OrderBy(x => x.Start).ToList();
+        await SynchronizationService.TrySyncRoutines(user);
+        Registries = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(Id)).OrderBy(x => x.Start).ToList();
         CalculateStats();
         // FilterTotal();
     }
@@ -176,10 +181,10 @@
         completedThisYear = 0;
         completedThisMonth = 0;
         completedThisWeek = 0;
-        var registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Routine.Id)).ToList();
+        var registries = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(Routine.Id)).ToList();
         for (var day = Routine.Start; day.Date <= DateTime.Today; day = day.AddDays(1))
         {
-            if (RoutineService.ShowToday(Routine, day))
+            if (RoutineService.ShowToday(Routine, day, user))
             {
                 total++;
                 if (day.Year == DateTime.Today.Year) { thisYear++; }
@@ -317,15 +322,15 @@
                     Icon = Routine.Icon,
                     Start = SelectedDate.Value
                 };
-            var id = await ToDoService.CreateRoutineRegistry(token, FirebasePath, registry);
+            var id = await ToDoService.CreateRoutineRegistry(user, FirebasePath, registry);
             registry = _conn.GetRoutineRegistry(id);
         }
         else
         {
-            var existingRegistry = _conn.GetRoutinesRegistry().Where(x => x.Start == SelectedDate && x.Routine.Equals(registry.Routine)).FirstOrDefault();
+            var existingRegistry = _conn.GetRoutinesRegistry(user).Where(x => x.Start == SelectedDate && x.Routine.Equals(registry.Routine)).FirstOrDefault();
             if (existingRegistry == null)
             {
-                var id = await ToDoService.CreateRoutineRegistry(token, FirebasePath, registry);
+                var id = await ToDoService.CreateRoutineRegistry(user, FirebasePath, registry);
                 registry = _conn.GetRoutineRegistry(id);
             }
         }

@@ -40,7 +40,7 @@
 
                     <div class="d-flex mb-sm-3 row row-cols-1 row-cols-sm-2" style="margin-top:2.5em;">
                         <MudDatePicker Class="pe-sm-2 col" @bind-Date="StartDate" Label="Inicio" Required="true" RequiredError="Campo obligatorio" PickerVariant="PickerVariant.Dialog"
-                                       IsDateDisabledFunc="@((DateTime dt)=>((Id == null || (Id != null && Event.Start.Date <= DateTime.Today)) && dt.Date < DateTime.Today))" ReadOnly="Id != null && Event.Start < DateTime.Today" />
+                                       IsDateDisabledFunc="@((DateTime dt)=>(Id == null && dt.Date < DateTime.Today))" ReadOnly="Id != null && Event.Start < DateTime.Today" />
                         <MudDatePicker Class="ps-sm-2 col" @bind-Date="EndDate" Label="Fin" PickerVariant="PickerVariant.Dialog" Clearable
                                        IsDateDisabledFunc="@((DateTime dt)=>(Id == null && dt.Date < DateTime.Today))" ReadOnly="Id != null && Event.End < DateTime.Now" />
                     </div>
@@ -167,18 +167,18 @@
         }
     }
 
-    private string token;
+    private string user;
 
     protected async override Task OnInitializedAsync()
     {
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
-        await SynchronizationService.TrySyncEvents(token);
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
+        await SynchronizationService.TrySyncEvents(user);
         if (string.IsNullOrWhiteSpace(Id))
         {
             Event = new Event()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    User = token
+                    User = user
                 };
             StartDate = Event.Start.Date;
         }
@@ -243,7 +243,7 @@
 
         if (Id == null)
         {
-            Id = await EventService.CreateEvent(token, FirebasePath, Event);
+            Id = await EventService.CreateEvent(user, FirebasePath, Event);
         }
         else
         {
@@ -260,7 +260,7 @@
             yesText: "Confirmar", noText: "Cancelar");
         if (result == true)
         {
-            await EventService.DeleteEvent(token, FirebasePath, Event);
+            await EventService.DeleteEvent(user, FirebasePath, Event);
             Close();
         }
     }

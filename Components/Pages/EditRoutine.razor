@@ -184,7 +184,7 @@
 
     private Routine Routine { get; set; }
 
-    private string token;
+    private string user;
     private int frequency
     {
         get 
@@ -243,19 +243,19 @@
 
     protected async override Task OnInitializedAsync()
     {
-        token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+        user = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "user");
         if (string.IsNullOrWhiteSpace(Id))
         {
             Routine = new Routine()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    User = token,
+                    User = user,
                     Modified = DateTime.UtcNow,
                 };
         }
         else
         {
-            SynchronizationService.TrySyncRoutines(token);
+            SynchronizationService.TrySyncRoutines(user);
             Routine = _conn.GetRoutine(Id);
         }
         var days = Routine.DaysOfWeek.Split(';');
@@ -319,68 +319,57 @@
                 }
                 Routine.DaysOfWeek = cad;
             }
-            await ToDoService.CreateRoutine(token, FirebasePath, Routine);
+            await ToDoService.CreateRoutine(user, FirebasePath, Routine);
         }
         else
         {
             var savedRoutine = _conn.GetRoutine(Id);
-            if (Routine.Evaluation != savedRoutine.Evaluation || Routine.Frequency != savedRoutine.Frequency ||
-                (savedRoutine.Evaluation == EvaluationType.Amount && savedRoutine.AmountModifier != Routine.AmountModifier) ||
-                (savedRoutine.Frequency == FrequencyType.DaysOfWeek && DaysChanged()) ||
-                ((savedRoutine.Frequency == FrequencyType.FlexibleWeek || savedRoutine.Frequency == FrequencyType.Personalized || savedRoutine.Frequency == FrequencyType.Periods) && savedRoutine.Goal != Routine.Goal) ||
-                (savedRoutine.Frequency == FrequencyType.Periods && savedRoutine.Rest != Routine.Rest))
+            bool? result = await DialogService.ShowMessageBox(
+            "Modificar",
+            "¿Seguro que quieres modificar esta rutina? Esta acción eliminará las estadísticas actuales",
+            yesText: "Si", noText: "Cancelar");
+            if (result != true)
             {
-                bool? result = await DialogService.ShowMessageBox(
-                "Modificar",
-                "¿Seguro que quieres modificar esta rutina? Esta acción eliminará las estadísticas actuales",
-                yesText: "Si", noText: "Cancelar");
-                if (result != true)
-                {
-                    return;
-                }
-                var registries = _conn.GetRoutinesRegistry().Where(x => x.Routine.Equals(Routine.Id));
-                foreach (var registry in registries)
-                {
-                    ToDoService.DeleteRoutineRegistry(token, FirebasePath, registry);
-                }
-                if (Routine.Evaluation == EvaluationType.Completed)
-                {
-                    Routine.AmountModifier = AmountModifier.NoGoal;
-                    Routine.Goal = 0;
-                }
-                if (Routine.Evaluation != EvaluationType.Amount)
-                {
-                    Routine.EvaluationText = "";
-                }
-                if (Routine.Frequency != FrequencyType.DaysOfWeek)
-                {
-                    Routine.DaysOfWeek = "False;False;False;False;False;False;False";
-                }
-                if (Routine.Frequency != FrequencyType.FlexibleWeek && Routine.Frequency != FrequencyType.Personalized && Routine.Frequency != FrequencyType.Periods)
-                {
-                    Routine.Period = 0;
-                }
-                if (Routine.Frequency != FrequencyType.Periods)
-                {
-                    Routine.Rest = 0;
-                }
+                return;
+            }
+            var registries = _conn.GetRoutinesRegistry(user).Where(x => x.Routine.Equals(Routine.Id));
+            foreach (var registry in registries)
+            {
+                ToDoService.DeleteRoutineRegistry(user, FirebasePath, registry);
+            }
+            if (Routine.Evaluation == EvaluationType.Completed)
+            {
+                Routine.AmountModifier = AmountModifier.NoGoal;
+                Routine.Goal = 0;
+            }
+            if (Routine.Evaluation != EvaluationType.Amount)
+            {
+                Routine.EvaluationText = "";
+            }
+            if (Routine.Frequency != FrequencyType.DaysOfWeek)
+            {
+                Routine.DaysOfWeek = "False;False;False;False;False;False;False";
+            }
+            if (Routine.Frequency != FrequencyType.FlexibleWeek && Routine.Frequency != FrequencyType.Personalized && Routine.Frequency != FrequencyType.Periods)
+            {
+                Routine.Period = 0;
+            }
+            if (Routine.Frequency != FrequencyType.Periods)
+            {
+                Routine.Rest = 0;
+            }
 
-                if (Routine.Frequency == FrequencyType.DaysOfWeek)
-                {
-                    var cad = "";
-                    for (int i = 0; i < weekdays.Length; i++)
-                    {
-                        cad += weekdays[i];
-                        if (i != weekdays.Length - 1) { cad += ";"; }
-                    }
-                    Routine.DaysOfWeek = cad;
-                }
-                Routine.Start = DateTime.Today;
-            }
-            else
+            if (Routine.Frequency == FrequencyType.DaysOfWeek)
             {
-                Routine.Evaluation = savedRoutine.Evaluation;
+                var cad = "";
+                for (int i = 0; i < weekdays.Length; i++)
+                {
+                    cad += weekdays[i];
+                    if (i != weekdays.Length - 1) { cad += ";"; }
+                }
+                Routine.DaysOfWeek = cad;
             }
+            Routine.Start = DateTime.Today;
 
             Routine.Modified = DateTime.UtcNow;
             _conn.GetConnection().Update(Routine);
@@ -390,7 +379,7 @@
 
     private bool DaysChanged()
     {
-        var savedDays = _conn.GetRoutine(Id).DaysOfWeek;
+        var savedDays = _conn.GetRoutine(Routine.Id).DaysOfWeek;
         var cad = "";
         for (int i = 0; i < weekdays.Length; i++)
         {
@@ -408,7 +397,7 @@
             yesText: "Si", noText: "Cancelar");
         if (result == true)
         {
-            await ToDoService.DeleteRoutine(token, FirebasePath, Routine);
+            await ToDoService.DeleteRoutine(user, FirebasePath, Routine);
             NavigationManager.NavigateTo("/routines", true);
         }
     }
@@ -420,6 +409,6 @@
 
     private void GoToStatistics()
     {
-        NavigationManager.NavigateTo($"/routinestats/{Id}");
+        NavigationManager.NavigateTo($"/routinestats/{Routine.Id}");
     }
 }
